@@ -1,0 +1,32 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:copymove.wsf
+-->
+ <script language="VBScript" src="maillib.vbs">
+ <![CDATA[
+  Dim objSession, objDestFolder, objSourceFolder, objCopiedMessage
+  Dim objSourceMessage
+
+  Set objSession = CreateObject("MAPI.Session")
+  ' supply a valid profile
+  objSession.Logon "Valid Profile"
+
+  'get a reference to a destination folder, using the GetFolderObj 
+  'function listed earlier in  this section
+  Set objDestFolder = GetFolderObj(objSession, "Personal Mail\Backup")
+
+  'get a reference to source folder to be copied..
+  Set objSourceFolder = GetFolderObj(objSession, "Store Mail\Processed")
+
+  'copy the source folder to the destination folder. The StoreID is passed 
+  'since the destination folder is in a difference InfoStore than the 
+  'original source message
+  Set objNewCopiedFolder=objSourceFolder.CopyTo(objDestFolder.ID, _ 
+                       objDestFolder.StoreID, , True)
+
+  objSession.Logoff
+  ]]>
+  </script>
+</job>
+

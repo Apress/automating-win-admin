@@ -1,0 +1,31 @@
+<?xml version="1.0" ?>
+<job>
+<reference object="ADODB.Recordset"/> 
+<!--comment
+Script:modifycmd.wsf
+modifies the contents of a Command object
+-->
+ <script language="VBScript">
+ <![CDATA[
+ Option Explicit
+   Dim objCmd, objConn, objRst
+    Set objCmd = CreateObject("ADODB.Command")
+    Set objConn = CreateObject("ADODB.Connection")
+    Set objRst = CreateObject("ADODB.RecordSet")
+        'open the Northwind database
+    objConn.Open "Provider=Microsoft.Jet.OLEDB.4.0;" & _
+                 "Data Source=D:\data\Access\Samples\Northwind.mdb"
+
+    Set objCmd.ActiveConnection = objConn
+    
+    objCmd.CommandText = "[Ten Most Expensive Products]"
+    objRst.Open objCmd, , adOpenKeyset, adLockOptimistic
+        Do While Not objRst.EOF
+        objRst("UnitPrice") = objRst("UnitPrice") * 1.05
+        objRst.MoveNext
+    Loop
+    objRst.Close
+    objConn.Close
+   ]]>
+   </script>
+</job>

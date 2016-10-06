@@ -1,0 +1,43 @@
+<job>
+<script language="VBScript">
+'remex.wsf
+Const WshFailed = 2
+Set objController = CreateObject("WshController")
+
+'create an instance of the remote object for script
+Set objRemote = _
+  objController.CreateScript("e:\wsh\chpt1\inv.vbs", "odin")
+
+'connect to the remote object. The second parameter is 
+'used to prefix local event functions
+WScript.ConnectObject objRemote , "rem_"
+
+objRemote.Execute
+
+'loop while the script is running
+Do While objRemote.Status <>  WshFailed 
+    WScript.Sleep 100
+Loop
+
+
+'error event fires is an error occurs in remote script
+Function rem_Error
+ Set objErr = objRemote.Error
+ WScript.Echo "Description " & objErr.Description
+ WScript.Echo "Line " & objErr.Line & " at character " & objErr.Character
+ WScript.Echo "Code that caused error " & objErr.Source
+ WScript.Quit
+End Function
+
+'start event fires when remote script starts execution
+Function rem_Start
+ WScript.Echo "Remote script started execution"
+End Function
+
+'end event fires when remote script starts execution
+Function rem_End
+ WScript.Echo "Remote script ended"
+End Function
+
+</script>
+</job>

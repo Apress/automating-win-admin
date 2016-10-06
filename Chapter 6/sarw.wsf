@@ -1,0 +1,57 @@
+<?xml version="1.0" ?>
+<job>
+<runtime>
+    <description>
+<![CDATA[
+This script demonstrates use of WScript.StdIn/Out/Err by
+doing some template processing.  The whole StdIn is read and 
+merged into a template file and the result is dumped out to stdout.
+]]>
+    </description>
+    <unnamed name="TemplateFile" many="false" required="true" 
+    helpstring="File containing template text." />
+    <example>
+<![CDATA[
+CScript sarw.wsf Template.txt < Replacement.txt > Out.txt
+
+Suppose Replacements.txt contained
+Fred Smith  555-1234
+Joe Blow    555-2432
+
+and Template.txt contained
+     Phone List
+Name        Phone
+</1/>
+
+then Out.txt would contain:
+     Phone List
+Name        Phone
+Fred Smith  555-1234
+Joe Blow    555-2432
+]]> 
+    </example>
+</runtime>
+<script language="VBScript" src="fsolib.vbs">
+<![CDATA[
+   Dim strTemplate
+   Sub ReplaceText
+    Dim strRepls, strOut
+
+	'check if replacement element exists
+    If Instr(strTemplate,"</1/>") = 0 Then _
+      ExitScript "Template file missing replacement element ", False
+    
+     'read the body from standard input and replace template layout
+     strRepls = WScript.StdIn.ReadAll
+     strOut = Replace(strTemplate , "</1/>" , strRepls)
+
+     WScript.StdOut.Write strOut
+  End Sub
+
+  CheckCScript
+  CheckArguments 1
+  strTemplate = GetFile(WScript.Arguments(0))
+  ReplaceText
+  ]]>
+ </script>
+</job>

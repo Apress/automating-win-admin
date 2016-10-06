@@ -1,0 +1,83 @@
+<?xml version="1.0" ?>
+<job>
+<!--
+exsearch.wsf
+returns the ADS path of any objects that have an E-mail address that 
+contains a specified string
+-->
+ <script language="VBScript" src="adsilib.vbs">
+ <![CDATA[
+
+Option Explicit
+
+ Dim objRst, objConn, nf
+ Dim objArgs, strServer,objMailbox, strAddress, aMailBoxes
+ Dim strAdr, bFlag
+
+
+ If Not IsCscript Then
+  ExitScript("This script must be run from command line using cscript.exe")
+ End If
+ 
+ 'get the command line arguments
+ Set objArgs = Wscript.Arguments
+
+ 'check the argument count
+ If objArgs.Count>2 Then 
+
+  strServer = objArgs(0) ' Exchange server name
+  strAdr = objArgs(1)
+  Set objConn = CreateObject("ADODB.Connection")
+
+  objConn.Provider = "ADsDSOObject"
+
+  objConn.Open "Active Directory Provider"
+    
+  Set objRst = _
+    objConn.Execute("SELECT adspath,cn,name,objectClass FROM " & _
+        "'LDAP://" & strServer & _
+        "' WHERE objectClass='organizationalPerson'")
+
+   Do While Not objRst.EOF
+    Set objMailbox = GetObject(objRst("ADsPath"))
+    aMailBoxes = objMailbox.otherMailbox
+
+    If Vartype(aMailBoxes) = 8204 Then
+
+     Wscript.Echo "*" & strAddress & " " & strAdr
+     bFlag = False
+        For Each strAddress In aMailBoxes
+        If InStr(strAddress,strAdr)> 0 Then
+            bFlag = True
+            Exit For
+        End If
+      Next
+    
+    'check the default SMTP mail property
+     If Instr(objMailbox.mail, strAdr)>0 Then bFlag = True
+
+      If bFlag Then Wscript.Echo objRst("ADsPath"), objRst("cn") 
+
+    End If
+
+    objRst.MoveNext    
+   Loop
+
+   objRst.Close
+   objConn.Close
+   
+   Set objMailbox = Nothing
+   Set objRst = Nothing
+   Set objConn = Nothing
+  Else
+    WScript.Echo "exsearch lists all mailboxes that contain a specified" & vbLf & _ 
+    "search string. Syntax:"  &  vbLf & _
+    "exsearch.wsf server searchstring" &  vbLf & _
+    "server        Exchange server to search" & vbLf & _ 
+    "searchstring  string to search" & vbLf & _
+    "Example: list all mailboxes that contain acme.com" & vbLf & _
+    "exsearch.ws Acme acme.com" 
+    End If
+    ]]>
+  </script>
+</job>

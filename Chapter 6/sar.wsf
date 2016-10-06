@@ -1,0 +1,72 @@
+<?xml version="1.0" ?>
+<job>
+<runtime>
+    <description>
+<![CDATA[
+This script demonstrates use of WScript.StdIn/Out/Err by
+doing some template processing.  A comma-separated list
+of replacement strings is read in from stdin, merged into
+a template file and the result is dumped out to stdout.
+The process is repeated for each line of replacement strings.
+]]>
+    </description>
+    <unnamed name="TemplateFile" many="false" required="true" 
+    helpstring="File containing template text." />
+    <example>
+<![CDATA[
+CScript sar.wsf Template.txt < Replacements.txt > Out.txt
+
+Suppose Replacements.txt contained
+
+Bob,*.doc
+Sue,*.txt
+
+and Template.txt contained
+
+net use \\odin\</1/> /user:admin /password:bigsecret
+copy \\odin\</1/>\backmeup\</2/> \\loki\backups\</1/>\
+net use /d \\odin\</1/>
+
+then Out.txt would contain
+
+net use \\odin\bob /user:admin /password:bigsecret
+copy \\odin\bob\backmeup\*.doc \\loki\backups\bob\
+net use /d \\odin\bob
+net use \\odin\sue /user:admin /password:bigsecret
+copy \\odin\sue\backmeup\*.txt \\loki\backups\sue\
+net use /d \\odin\sue
+]]> 
+    </example>
+</runtime>
+<script language="VBScript" src="fsolib.vbs">
+<![CDATA[
+   Dim strTemplate
+
+   Sub ReplaceText
+    Dim strRepls, aRepls, strOut, objRegExp
+    Set objRegExp = New RegExp
+    objRegExp.Pattern = "<\/\d+\/>"
+    
+     'loop through each line of standard input
+    Do While Not WScript.StdIn.AtEndOfStream
+     strRepls = WScript.StdIn.ReadLine
+     aRepls = Split(strRepls, ",")
+     strOut = strTemplate
+      'replace each element in template
+      For nF = 0 To Ubound(aRepls)   
+        strOut = Replace(strOut , "</" & nF+1 & "/>" , aRepls(nF))
+      Next
+     'check if all elements were replaced
+     If objRegExp.Test(strOut) Then _
+        ExitScript "Replacement file has too few values.", False
+      WScript.StdOut.Write strOut
+     Loop
+  End Sub
+
+  CheckCScript
+  CheckArguments 1
+  strTemplate = GetFile(WScript.Arguments(0))
+  ReplaceText
+  ]]>
+ </script>
+</job>

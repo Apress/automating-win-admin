@@ -1,0 +1,27 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:msnsmsgrev.wsf
+captures a Messenger TextReceived event
+-->
+ <script language="VBScript" src="msnlib.vbs">
+<![CDATA[
+  Dim objMessenger
+
+ Set objMessenger = StartMessenger("freds@hotmail.com", "sderf!@#")
+ 
+  WScript.ConnectObject objMessenger, "msn_"
+  Wscript.Echo "Waiting for messages"  
+ 'continue while Messenger is online
+  While objMessenger.LocalState = MSTATE_ONLINE
+   Wscript.Sleep 100
+  Wend
+  
+  Sub msn_OnTextReceived(objSess, objUser, strHeader, strMsgText , bPf)
+   If Not strMsgText = "" Then 
+     Wscript.Echo objUser.FriendlyName & ":" & strMsgText
+   End If	 
+  End Sub
+  ]]>
+  </script>
+</job>

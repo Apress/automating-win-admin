@@ -1,0 +1,20 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:msns.wsf
+sends a message using MSN Messenger
+-->
+ <script language="VBScript" src="msnlib.vbs">
+<![CDATA[
+  Dim objMessenger, objUser
+
+  Set objMessenger = StartMessenger("freds@hotmail.com", "sderf!@#")
+
+  'get a user to send a message to 
+  Set objUser = objMessenger.CreateUser("janma70@hotmail.com", objMessenger.Services.PrimaryService)
+  
+  'send a message
+  nCookie = objUser.SendText(MsgHeader, "Hello Fred!", MMSGTYPE_ALL_RESULTS)
+  ]]>
+  </script>
+</job>

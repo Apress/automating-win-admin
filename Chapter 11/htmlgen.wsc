@@ -1,0 +1,116 @@
+<?xml version="1.0"?>
+<component>
+<registration
+    description="HTMLGen"
+    progid="ENTWSH.HTMLGen"
+    version="1.00"
+    classid="{b653fb70-9425-11d3-bc98-00104b164591}"
+>
+</registration>
+<public>
+    <property name="HTML">
+        <get/>
+    </property>
+    <property name="Object">
+        <get/>
+    </property>
+    <method name="WriteLine">
+        <PARAMETER name="strLine"/>
+    </method>
+    <method name="WritePara">
+        <PARAMETER name="strLine"/>
+    </method>
+    <method name="StartDOC">
+        <PARAMETER name="strTitle"/>
+        <PARAMETER name="bCreateDoc"/>
+    </method>
+    <method name="EndDOC">
+    </method>
+    <method name="StartTable">
+        <PARAMETER name="aTableWidth"/>
+        <PARAMETER name="strBorderWidth"/>
+    </method>
+    <method name="EndTable">
+    </method>
+    <method name="WriteRow">
+        <PARAMETER name="aVals"/>
+        <PARAMETER name="strAttributes"/>
+    </method>
+</public>
+<script language="VBScript">
+<![CDATA[
+
+ Dim objIE , objDoc, bFirstRow
+ Dim aWidth, bC, strLine, strDoc
+ strDoc = "" 
+ 
+ 'writes a line to the HTML document
+ Public Sub WriteLine(strLine)
+  strDoc = strDoc & strLine & vbCrLf
+ End Sub
+
+ 'writes a paragraph to HTML document
+ Public Sub WritePara(strLine)
+  strDoc = strDoc & "<p>" & strLine & "</p>" & vbCrLf 
+ End Sub
+
+ 'writes a paragraph to HTML document
+ Public Sub StartDOC(strTitle, bCreateDoc)
+ 
+  bC = bCreateDoc
+  strDoc = "<html><head><title>" & strTitle & "</title></head>" & vbCrLf
+  
+  If bCreateDoc Then
+   Set objIE = CreateObject("InternetExplorer.Application")
+
+   objIE.Navigate "about:blank"
+  
+   While objIE.Busy 
+   Wend
+    
+   objIE.Visible = True
+   
+  End If
+ End Sub
+
+ Public Sub EndDOC()
+  strDoc = strDoc & "</body></html>" & vbCrLf
+
+  If bC Then 
+     Set objDoc = objIE.Document
+    objDoc.WriteLn (strdoc)
+  End If    
+ 
+End Sub
+
+ Public Sub StartTable(aTableWidth, strBorderWidth)
+  aWidth = aTableWidth
+  strDoc = strDoc & "<table border = """ & strBorderWidth & """>" & vbCrLf
+ End Sub
+
+ Public Sub EndTable()
+  strDoc = strDoc & "</table>" & vbCrLf
+ End Sub
+
+ Public Sub WriteRow(aVals, strAttributes)
+  Dim nF 
+  strDoc = strDoc & "<tr " & strAttributes & ">" & vbCrLf
+   For nF = 0 To UBound(aVals)
+     strDoc = strDoc & "<td width=" & aWidth(nF) & ">" & aVals(nF) _
+              & "</td>" & vbCrLf
+   Next
+ 
+  strDoc = strDoc & "</tr>" & vbCrLf
+ End Sub
+
+ Function get_Object()
+  Set get_Object = objIE
+ End Function
+
+
+ Function get_HTML()
+  get_HTML = strDoc
+ End Function
+]]>
+</script>
+</component>

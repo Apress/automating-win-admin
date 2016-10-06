@@ -1,0 +1,104 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:adsiqry.vbs
+Description:executes queries against LDAP provider
+-->
+ <script language="VBScript" src="adsilib.vbs">
+ <![CDATA[
+Option Explicit
+Const ADS_SCOPE_ONELEVEL = 1
+Dim objRst, objConn, objCmd
+Dim bShowFields, bSingleLevel, strQry
+Dim strDelimiter, nF, strHeaders, strLine
+
+If Not IsCscript() Then
+ ExitScript "This script must be run from command line using cscript.exe" 
+End If
+
+ strDelimiter = ","
+ GetArguments
+ Set objConn = CreateObject("ADODB.Connection")
+ objConn.Provider = "ADsDSOObject"
+ objConn.Open "Active Directory Provider"
+
+ Set objCmd = CreateObject("ADODB.Command")
+ Set objCmd.ActiveConnection = objConn
+
+ 'check if only the single level is to be searched
+ If bSingleLevel Then objCmd.Properties("searchscope") = ADS_SCOPE_ONELEVEL
+
+ objCmd.CommandText = strQry 
+ 
+ Set objRst = objCmd.Execute
+
+ 'check if headers are to be outputted
+ If bShowFields Then
+    'loop through
+    For nF = 0 To objRst.Fields.Count - 1
+        strHeaders = strHeaders & objRst.Fields(nF).Name & strDelimiter
+    Next
+  strHeaders = Left(strHeaders, Len(strHeaders) - 1)
+  Wscript.StdOut.WriteLine strHeaders
+ End If
+
+  Do While Not objRst.EOF
+    strLine = ""
+    
+      For nF = 0 To objRst.Fields.Count - 1
+        strLine = strLine & objRst.Fields(nF) & strDelimiter
+      Next
+    strLine = Left(strLine, Len(strLine) - 1)
+    Wscript.StdOut.WriteLine strLine
+    objRst.MoveNext
+  Loop
+
+ objRst.Close
+ objConn.Close
+
+'Reads command line arguments and sets appropriate flags
+Sub GetArguments
+ Dim nF, strArg
+
+ If Wscript.Arguments.Count = 0 Then
+  ShowUsage
+  Wscript.Quit
+ End If
+
+ strQry = Wscript.Arguments(0)
+
+ 'loop through command line parameters
+ For nF = 1 to Wscript.Arguments.Count - 1
+  Select Case Ucase(Left(Wscript.Arguments(nF),2))
+    Case "/H" 
+    bShowFields= True
+
+    Case "/S" 
+    bSingleLevel = True
+
+    Case "/D"
+      strDelimiter = Mid(Wscript.Arguments(nF),4)
+    End Select
+ Next
+
+End Sub
+
+'displays script usage information
+Sub ShowUsage()    
+WScript.Echo "adsiqry executes queries and LDAP provider." & vbLf & _ 
+    "Syntax:" &  vbLf & _
+    "adsiqry.ws query [/d:delimiter] [/s] [/h] " &  vbLf & _
+    "/d:delimiter optional delimiter to separate output columns" & vbLf & _
+    "/s    optional. If set then only single level is searched" & vbLf & _
+    "/h    option flag. If set then field names are shown" 
+    WScript.Quit -1
+ End Sub
+
+ 'display an error message and exist script
+ Function ExitScript(strMsg)
+  Wscript.Echo strMsg
+  Wscript.Quit -1
+ End Function
+  ]]>
+  </script>
+</job>

@@ -1,0 +1,1 @@
+net user password </1/> /ADD /FULLNAME:"</2/>" /COMMENT:"</3/>"

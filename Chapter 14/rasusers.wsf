@@ -1,0 +1,56 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:rasusers.wsf
+Description:lists all users with RAS access
+-->
+ <script language="VBScript" src="adsilib.vbs">
+ <![CDATA[
+   Option Explicit
+   Const ADS_RAS_NOCALLBACK = 1
+   Const ADS_RAS_ADMIN_SETCALLBACK = 2
+   Const ADS_RAS_CALLER_SETCALLBACK = 4
+   Dim objUser, strDomain, objDomain, strType, lFlag
+
+   On Error Resume Next
+
+   If Not Wscript.Arguments.Count = 1 Then
+     ShowUsage
+     Wscript.Quit
+   End If
+
+   'get a reference to a domain
+   Set objDomain = GetObject("WinNT://" & Wscript.Arguments(0))
+
+   If Err Then _
+     ExitScript "Error getting reference to domain: " & Wscript.Arguments(0)
+
+   'filter on user objects
+   objDomain.Filter = Array("User")
+   'loop through each user and check if they have RAS access
+   For Each objUser In objDomain
+
+    If objUser.DialinPrivilege Then
+     
+    lFlag = objUser.GetRasCallBack
+    
+    If lFlag And ADS_RAS_NOCALLBACK Then
+      strType = "No Callback"
+    ElseIf lFlag And ADS_RAS_CALLER_SETCALLBACK Then
+      strType = "Call back set by caller"
+    ElseIf lFlag And ADS_RAS_ADMIN_SETCALLBACK Then
+      strType = "Call back number:" & objUser.GetRasPhoneNumber
+    End If
+          Wscript.Echo objUser.Name & ":" & strType
+    End If
+   Next
+
+   Sub ShowUsage
+    WScript.Echo "rasusers lists user RAS settings" & vbCrLf & _ 
+    "Syntax:" &  vbCrLf & _
+    "rasusers.wsf domain" &  vbCrLf & _
+    "domain domain name to list users from" 
+   End Sub
+    ]]>
+  </script>
+</job>

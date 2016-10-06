@@ -1,0 +1,107 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:procmaint.wsf
+Description:
+Performs process operations
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+Const wbemFlagReturnImmediately  =16 
+Const wbemFlagForwardOnly = 32
+ Dim avar, objDescriptor
+ Dim objInstance, strMachine, strPermission 
+ Dim objService, nProcID, bList, objProcess, nResult
+ strMachine = Null 
+ nProcID = Null
+ On Error Resume Next
+ 'check if script is being run from command prompt
+ If Not IsCscript Then 
+  ExitScript _
+      "This script must be run from command line using cscript.exe",False
+ End If 
+
+If WScript.Arguments.Count = 0 Then 
+   ShowUsage
+ End If
+  GetArguments
+  If strMachine<> "" Then
+   Set objService = _ 
+             GetObject("winmgmts:{impersonationLevel=impersonate}!\\" _ 
+                        & strMachine)
+  Else
+   Set objService = _ 
+             GetObject("winmgmts:{impersonationLevel=impersonate}")
+  End If
+
+  'check if list flag is set..
+  If bList Then
+   'get list of processes
+   Set objInstance = _ 
+        objService.ExecQuery("Select Handle, Description From Win32_Process",, _
+               wbemFlagReturnImmediately + wbemFlagForwardOnly )
+
+    For Each objProcess In objInstance
+        WScript.Echo objProcess.Handle, objProcess.Description
+    Next
+  
+  ElseIf Not IsNull(nProcID) Then
+   'get a reference to specified process specified by the PID
+    Set objProcess = objService.Get("Win32_Process.Handle=" _ 
+                    & chr(34) & nProcID & chr(34))
+    
+    If Err Then  ExitScript _
+              "Unable to get reference to process:" & nProcID,False
+    
+    'terminate process
+     nResult = objProcess.Terminate(0)
+        
+    If nResult Then 
+        WScript.Echo "Successfully terminated process# " & nProcID
+    Else
+        WScript.Echo "Unable to terminate process# " & nProcID    
+    End If
+  
+  End If
+ 
+ 
+  'Reads command line arguments
+  Sub GetArguments
+  Dim nF, strArg
+  'loop through command line parameters
+  For nF = 0 to WScript.Arguments.Count - 1
+   Select Case Ucase(WScript.Arguments(nF))
+     Case "/KILL" 'stop specified process
+          nProcID = GetParameter(nF)
+
+    Case "/LIST" 'lists specified processes
+          bList = True
+
+     Case "/MACHINE" 'gets machine name
+          strMachine = GetParameter(nF)
+   End Select
+   Next
+  End Sub
+
+ 'gets next command line argument
+ 'Parameters nIndex command line argument number to process
+ Function GetParameter(nIndex)
+  If nIndex+1> WScript.Arguments.Count-1 Then ExitScript "Not enough arguments", True
+  GetParameter = WScript.Arguments(nIndex+1)
+ End Function
+
+ Sub ShowUsage
+WScript.Echo "procmaint performs process operations" & vbCrLf & _
+  "Syntax:"  &  vbCrLf & _
+  "procmaint.wsf [/LIST] [/MACHINE name] [/KILL procid]" & vbCrLf & _
+  "/LIST    optional. Lists active process information " & vbCrLf & _ 
+  "/MACHINE optional. Name of machine to perform operations" & vbCrLf & _ 
+  "/KILL    optional. Terminates process for specified procid" & vbCrLf & _
+  "Example: list processes on machine thor:" & vbCrLf & _
+  "procmaint.wsf /MACHINE thor /list" & vbCrLf & _        
+  "Example: terminate process with id 100:" & vbCrLf & _
+  "procmaint.wsf /kill 100"
+ End Sub
+  ]]>
+ </script>
+</job>

@@ -1,0 +1,63 @@
+<?xml version="1.0" ?>
+<job>
+<reference object="ADODB.Recordset"/> 
+<!--comment
+Script:buildparams.wsf
+Builds Command object parameters from SQL Server store procedures
+-->
+ <script language="VBScript" src="adoinc.vbs">
+ <![CDATA[
+   Option Explicit
+   Dim strConn, objConn, objCmd
+
+   If WScript.Arguments.Count <> 2 Then
+    WScript.Echo "buildparams builds stored procedures ADO logic" _
+       & vbCrLf &  "Syntax:" &  vbCrLf & _
+       "buildparams.wsf connection storedproc" &  vbCrLf & _
+       "connection Connection string to data source" & vbCrLf & _
+       "storedproc stored procedure to build ADO parameter logic"
+     Wscript.Quit 
+   End If
+
+    Set objCmd = CreateObject("ADODB.Command")
+    objCmd.ActiveConnection = Wscript.Arguments(0) 
+    
+    'set stored procedure
+    objCmd.CommandText = Wscript.Arguments(1) 
+    objCmd.CommandType = adCmdStoredProc
+    objCmd.Parameters.Refresh
+
+    BuildCommands objCmd
+  
+   Sub BuildCommands(objCmd)
+    Dim objParameter, nF, strComm
+    For nF = 0 To objCmd.Parameters.Count - 1
+     Set objParameter = objCmd.Parameters(nF)
+     strComm = "objCmd.Parameters.Append objCmd.CreateParameter(""" _
+                & objParameter.Name & """, " & _
+              GetDataType(objParameter.Type) & "," 
+
+       'if not default Direction, add value to statement
+       If Not objParameter.Direction = adParamInput Then _
+         strComm = strComm & objParameter.Direction
+      
+      'check if parameter type is not intput/output or return
+      If objParameter.Direction <> adParamInputOutput And _ 
+            objParameter.Direction <> adParamReturnValue Then
+
+         strComm = strComm & "," 
+         If objParameter.Size > 0 Then 
+           strComm = strComm & objParameter.Size
+         End If 
+
+         strComm = strComm & "," 
+        End If
+  
+       strComm = strComm & ")"
+      Wscript.Echo strComm
+    Next
+  End Sub
+  ]]>
+  </script>
+</job>
+

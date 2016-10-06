@@ -1,0 +1,55 @@
+<?xml version="1.0" ?>
+<job>
+<reference object="ADODB.Recordset"/> 
+<!--comment
+Script:ADOHTML.wsf
+Updates a local Access table from remote HTML data source
+-->
+ <script language="VBScript">
+ <![CDATA[
+ Option Explicit
+Dim objHTMLRst , objProductsRst, objRST
+Set objHTMLRst = CreateObject("ADODB.Recordset")
+ Set objProductsRst = CreateObject("ADODB.Recordset")
+
+ 'open a connection to an HTML file 
+ 'the path here is specified as a local HTM file
+ objHTMLRst.Open "Atable", _ 
+      "Provider=Microsoft.Jet.OLEDB.4.0" & _
+       ";Data Source=e:\code download\Chapter 13\products.htm;" & _
+        "Extended Properties='HTML Import;HDR=YES'", _ 
+         adOpenForwardOnly, adLockReadOnly
+
+'open the products table
+ objProductsRst.Source = "Products"
+ objProductsRst.ActiveConnection = "Provider=Microsoft.Jet.OLEDB.4.0;" & _
+                       "Data Source=e:\Nwind.mdb;"
+
+ objProductsRst.CursorType = adOpenDynamic 
+ objProductsRst.LockType = adLockPessimistic
+ objProductsRst.Open
+'loop through and total the contents
+ While Not objHTMLRst.EOF
+    objProductsRst.MoveFirst
+    objProductsRst.Find "ProductName='" & objHTMLRst(0) & "'"
+
+'if the item is not found in the local table then add record
+    If objProductsRst.EOF Then
+        objProductsRst.AddNew
+        objProductsRst("ProductName") = objHTMLRst("ProductName")
+        objProductsRst("QuantityPerUnit") = objHTMLRst("QuantityPerUnit")
+        objProductsRst("UnitPrice") = objHTMLRst("UnitPrice")
+        objProductsRst("SupplierID") = 6        
+        objProductsRst.Update
+    Else
+        objProductsRst("UnitPrice") = objHTMLRst("UnitPrice")
+        objProductsRst.Update
+    End If
+    objHTMLRst.MoveNext
+  Wend
+'close the Recordset objects
+ objProductsRst.Close
+ objHTMLRst.Close
+   ]]>
+  </script>
+</job>

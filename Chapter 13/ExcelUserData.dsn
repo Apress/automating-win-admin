@@ -1,0 +1,14 @@
+[ODBC]
+DRIVER=Microsoft Excel Driver (*.xls)
+UID=admin
+UserCommitSync=Yes
+Threads=3
+SafeTransactions=0
+ReadOnly=0
+PageTimeout=5
+MaxScanRows=8
+MaxBufferSize=2048
+FIL=excel 8.0
+DriverId=790
+DefaultDir=E:\Code Download\Chapter 13
+DBQ=E:\Code Download\Chapter 13\UserData.xls

@@ -1,0 +1,53 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:httpget.wsf
+Description:
+Retrieve the contents of a URL
+-->
+ <script language="VBScript" src="fsolib.vbs">
+ <![CDATA[
+ Option Explicit
+ Dim objXMLHTTP, strURL, nf, nResult
+ 'check if script is being run from command prompt
+ If Not IsCscript Then 
+  ExitScript _
+     "This script must be run from command line using cscript.exe",True
+ End If 
+
+ 'check the argument count
+ If Not WScript.Arguments.Count = 1 Then 
+   ShowUsage
+   WScript.Quit
+ End If
+
+  Set objXMLHTTP = CreateObject("Microsoft.XMLHTTP")
+
+  strURL = WScript.Arguments(0)
+  objXMLHTTP.Open "GET", strURL, False
+  objXMLHTTP.Send
+ 
+  'check if erorr occurred resolving page or sending request
+  If Err Then _
+     ExitScript "Error sending request for page " & strURL, True
+
+
+  'check if page not found.. 
+If Not objXMLHTTP.statusText = "OK" Then
+ExitScript "Error retrieving page " & strURL & vbCrLf & _
+               "Error status:" & objXMLHTTP.statusText & vbCrLf & _
+               "Error message:" & objXMLHTTP.responseText, True
+  Else
+     WScript.Stdout.Write objXMLHTTP.responseText
+  End If
+
+ Sub ShowUsage 
+  WScript.Echo "httpget retrieves specified URL" & vbCrLf & _
+  "Syntax:"  &  vbCrLf & _
+  "httpget.wsf URL" & vbCrLf & _
+  "URL        URL of requested page to be downloaded" & vbCrLf & _
+  "           .Must be in absolute format e.g http://site/page"
+ End Sub
+ ]]>
+ </script>
+</job>

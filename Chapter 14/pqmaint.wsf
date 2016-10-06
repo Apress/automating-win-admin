@@ -1,0 +1,43 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:pqmaint.wsf
+Description:pauses or purges specified print queue
+-->
+ <script language="VBScript" src="adsilib.vbs">
+ <![CDATA[
+  Dim objPrintQ, strAction, strComputer, strPrinter
+   
+   If Not WScript.Arguments.Count = 3 Then 
+    ShowUsage
+        Wscript.Quit
+   End If
+
+   strComputer = Wscript.Arguments(0) 
+   strPrinter = Wscript.Arguments(1) 
+   strAction = Wscript.Arguments(2) 
+
+   Set objPrintQ = GetObject("WinNT://" & strComputer & "/" & strPrinter)
+
+    Select Case UCase(strAction)
+     Case "PURGE"
+      objPrintQ.Purge
+     Case "PAUSE"
+      objPrintQ.Pause
+     Case "RESUME"
+      objPrintQ.Resume
+    End Select
+
+  Sub ShowUsage
+    WScript.Echo "pqmaint performs print queue maintenance" & vbCrLf & _ 
+     "Syntax:" &  vbCrLf & _
+    "pqmaint.wsf computer printer action" &  vbCrLf & _
+    "computer computer printer is shared on" & vbCrLf & _ 
+    "printer  name of printer" & vbCrLf & _
+    "action   Purge, pause or resume" & vbCrLf & _
+    "Example:purge " & vbCrLf & _
+    "pqmaint.wsf odin web purge"
+  End Sub
+   ]]>
+  </script>
+</job>

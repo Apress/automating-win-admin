@@ -1,0 +1,379 @@
+<?xml version="1.0"?>
+<component>
+
+<registration
+   description="ADSIFileSecurity"
+   progid="ENTWSH.FileSecurity"
+   version="1.00"
+   classid="{f27d40d0-7a43-11d3-bc2c-00104b164591}"
+>
+</registration>
+
+<public>
+   <method name="SetSecurity">
+   </method>
+   <method name="ListSecurity">
+      <PARAMETER name="strPath"/>
+   </method>
+    <property name="UseADSUtility"><put/>
+  </property>
+
+ </public>
+
+<script language="VBScript">
+<![CDATA[
+'ADSIFileSecurity.wsc
+'Description: Sets and lists file/folder security
+
+Option Explicit
+
+Const OBJECT_INHERIT_ACE = 1
+Const CONTAINER_INHERIT_ACE = 2
+Const NO_PROPAGATE_INHERIT_ACE = 4
+Const INHERIT_ONLY_ACE = 8
+Const VALID_INHERIT_FLAGS = 15
+
+Const GENERIC_ALL = &H10000000
+Const GENERIC_EXECUTE = &H20000000
+Const GENERIC_WRITE = &H40000000
+Const GENERIC_READ = &H80000000
+
+Const ACETYPE_ACCESS_DENIED = 1
+Const ACETYPE_ACCESS_ALLOWED = 0
+
+'file access types
+Const FILE_GENERIC_READ = 1179785 
+Const FILE_GENERIC_WRITE = 1179926 
+Const FILE_GENERIC_EXECUTE = 1179808 
+Const FILE_GENERIC_DELETE = 65536
+Const FILE_FULL_ACCESS = 2032127
+Const FILE_PERMISSION_ACCESS = 262144
+Const FILE_OWNERSHIP_ACCESS = 524288
+Const ADS_PATH_FILE = 1 
+Const ADS_SD_FORMAT_IID = 1
+
+Dim objSecurity, objSD, objDACL, objAce 
+Dim ErrorString, bADsSecurity
+bADsSecurity = False
+
+Function get_Error()
+   get_Error = ErrorString
+End Function
+
+'Description:Sets specified file or folder security
+Function SetSecurity(strPath, strRights, strTrustee)
+
+Dim objNewAce, objNewAce2
+Dim strType, strRights2, nF
+Dim objfolder, objFSO 
+
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+
+'determine if the path is a file or a folder
+If objFSO.FileExists(strPath) Then
+    strType = "F" 'file
+ElseIf objFSO.FolderExists(strPath) Then
+    strType = "D" 'folder/directory
+Else ' not found
+    SetSecurity = False
+    ErrorString = CreateErrMsg(Err, _
+        "File " & strPath & " does not exist")
+    Exit Function
+End If
+
+'if bADsSecurity is True, then use ADsSecurity object from
+'ADSI 2.5 resource kit. If False, then use ADsSecurityUtility object
+'available in Windows XP and 2003
+If bADsSecurity Then
+    Set objSecurity = CreateObject("ADsSecurity")'create security object
+    'get reference to specified file/folder path
+    Set objSD = objSecurity.GetSecurityDescriptor("FILE://" & strPath)
+Else
+    Set objSecurity = CreateObject("ADsSecurityUtility")
+    Set objSD = objSecurity.GetSecurityDescriptor(strPath, _
+                ADS_PATH_FILE, ADS_SD_FORMAT_IID)
+End If
+
+Set objDACL = objSD.DiscretionaryAcl 'get the Discretionary ACL
+
+ 'check if object is a file
+ If strType = "F" Then
+    Set objNewAce = CreateObject("AccessControlEntry")
+    objNewAce.Trustee = strTrustee 'set trustee
+    
+    objNewAce.AccessMask = FileRightsID(strRights, "F")
+    
+    'remove the trustee from the existing ACL
+    FileSetSecurityRemove strTrustee, strPath
+        
+    'check if no access is specified
+    If strRights = "N" Then
+        objNewAce.AceType = ACETYPE_ACCESS_DENIED
+    Else
+        objNewAce.AceType = ACETYPE_ACCESS_ALLOWED
+    End If
+    'add the new ACE to the DACL
+    objDACL.AddAce objNewAce
+ Else 'set security on a folder
+    'check if folder container and file access rights are specified
+    nF = InStr(strRights, ":")
+    If nF > 0 Then
+        strRights2 = Mid(strRights, nF + 1)
+        strRights = Left(strRights, nF - 1)
+    Else
+        strRights2 = strRights
+    End If
+   
+    'remove the trustee from the existing ACL
+    FileSetSecurityRemove strTrustee, strPath
+    
+    'set file access
+    Set objNewAce = CreateObject("AccessControlEntry")
+    objNewAce.Trustee = strTrustee 'set file trustee
+    objNewAce.AccessMask = FileRightsID(strRights2, "F")
+    objNewAce.AceType = ACETYPE_ACCESS_ALLOWED
+    objNewAce.AceFlags = INHERIT_ONLY_ACE Or OBJECT_INHERIT_ACE
+
+    objDACL.AddAce objNewAce
+    
+    'set folder container access
+    Set objNewAce2 = CreateObject("AccessControlEntry")
+    objNewAce2.Trustee = strTrustee
+    objNewAce2.AccessMask = FileRightsID(strRights, "D")
+    objNewAce2.AceType = ACETYPE_ACCESS_ALLOWED
+    objNewAce2.AceFlags = CONTAINER_INHERIT_ACE
+
+    objDACL.AddAce objNewAce2 'add ACE to DACL
+
+  End If
+
+    objSD.DiscretionaryAcl = objDACL 'set the DACL
+
+If bADsSecurity Then
+	objSecurity.SetSecurityDescriptor objSD
+Else
+    objSecurity.SetSecurityDescriptor strPath, _
+                    ADS_PATH_FILE, objSD, ADS_SD_FORMAT_IID
+End If
+    
+    SetSecurity = True
+    Set objSD = Nothing
+    Set objSecurity = Nothing
+    Set objAce = Nothing
+    Set objNewAce = Nothing
+    Set objNewAce2 = Nothing
+    Set objFSO = Nothing
+
+End Function
+
+Function put_UseADSUtility(bFlag)
+  bADsSecurity = bFlag
+End Function
+
+
+Function ListSecurity(strPath)
+   Dim objSecurity
+   Dim objSD, objDACL, objAce
+   Dim strUser, strLastUser, strLine, strRights
+   
+  ' Set objSecurity = CreateObject("ADsSecurity")
+   
+   'On Error Resume Next
+   
+   'Set objSD = objSecurity.GetSecurityDescriptor("FILE://" & strPath)
+ 
+   
+
+   'if bADsSecurity is True, then use ADsSecurity object from
+    'ADSI 2.5 resource kit. If False, then use ADsSecurityUtility object
+    'available in Windows XP and 2003
+    If bADsSecurity Then
+       Set objSecurity = CreateObject("ADsSecurity")'create security object
+       'get reference to specified file/folder path
+       Set objSD = objSecurity.GetSecurityDescriptor("FILE://" & strPath)
+    Else
+       Set objSecurity = CreateObject("ADsSecurityUtility")
+       Set objSD = objSecurity.GetSecurityDescriptor(strPath, _
+                ADS_PATH_FILE, ADS_SD_FORMAT_IID)
+    End If
+
+   Set objDACL = objSD.DiscretionaryAcl
+
+   If Not Err Then
+    strUser = ""
+    For Each objAce In objDACL
+     
+     strUser = objAce.Trustee
+     
+     If strUser <> strLastUser And strLastUser <> "" Then
+       strRights = strRights & vbCrLf & objAce.Trustee & "," & _
+                   FileRights(objAce.AccessMask, objAce.AceType)
+     ElseIf strLastUser = "" Then
+      strRights = strRights & objAce.Trustee & "," & _
+               FileRights(objAce.AccessMask, objAce.AceType)
+     Else
+       strRights = strRights & ":" & _ 
+               FileRights(objAce.AccessMask, objAce.AceType)
+     End If
+     strLastUser = strUser
+    Next
+   End If	
+
+   ListSecurity = strRights
+   Set objSecurity = Nothing
+   Set objSD = Nothing
+   Set objDACL = Nothing
+   Set objAce = Nothing
+   
+end function
+
+'Description:removes trustee from DACL
+'Parameters:
+'strTrustee  Name of trustee account to remove from DACL
+Sub FileSetSecurityRemove(strTrustee, strPath)
+Dim bChange
+
+bChange = False
+
+For Each objAce In objDACL
+    If StrComp(strTrustee, objAce.Trustee, 1) = 0 Or strTrustee = "" Then
+        objDACL.RemoveAce objAce
+        bChange = True
+    End If
+Next
+    
+If bChange Then
+    objSD.DiscretionaryAcl = objDACL
+    'objSecurity.SetSecurityDescriptor objSD
+
+   If bADsSecurity Then
+	objSecurity.SetSecurityDescriptor objSD
+   Else
+     objSecurity.SetSecurityDescriptor strPath, _
+                    ADS_PATH_FILE, objSD, ADS_SD_FORMAT_IID
+   End If
+
+End If
+
+End Sub
+
+'Description:returns a string of security settings for specified value
+'Parameters:
+'rights   access rights
+'nType    Access type. 0 = access allowed, 1 - access denied
+'Returns: String containing security flags
+Function FileRights(rights, nType)
+Dim strRet
+strRet = ""
+Select Case rights
+
+        Case FILE_FULL_ACCESS, GENERIC_ALL
+            If nType = ACETYPE_ACCESS_DENIED Then
+                strRet = "N"
+            Else
+                strRet = "F"
+            End If
+
+        Case FILE_GENERIC_READ Or FILE_GENERIC_EXECUTE Or _
+         FILE_GENERIC_DELETE Or FILE_GENERIC_READ _
+         Or FILE_GENERIC_WRITE, GENERIC_READ _
+            Or GENERIC_WRITE Or GENERIC_EXECUTE Or FILE_GENERIC_DELETE
+            strRet = "C"
+        Case Else
+           
+            If rights = (rights Or FILE_GENERIC_READ) Or _
+            rights = (rights Or GENERIC_READ) Then strRet = strRet & "R"
+
+            If rights = (rights Or FILE_GENERIC_EXECUTE) Or _
+            rights = (rights Or GENERIC_EXECUTE) Then strRet= strRet & "X"
+
+            If rights = (rights Or FILE_GENERIC_WRITE) Or _
+            rights = (rights Or GENERIC_WRITE) Then strRet = strRet & "W"
+
+            If rights = (rights Or FILE_GENERIC_DELETE) Then _
+                strRet = strRet & "D"
+     
+            If rights = (rights Or 524288) Then strRet = strRet & "O"
+
+            If rights = (rights Or 262144) Then strRet = strRet & "P"
+
+End Select
+
+FileRights = strRet
+
+End Function
+
+
+'Description:returns the access value for specified string type
+'Parameters:
+'rights   string of acces rights
+'strType  object . F = file, D - folder/directory
+'Returns: value for specified access string
+Function FileRightsID(rights, strType)
+
+    Dim lret, counter
+
+    For counter = 1 To Len(rights)
+
+        Select Case Mid(rights, counter, 1)
+        
+        Case "F", "N"
+            If strType = "F" Then
+                lret = lret Or FILE_FULL_ACCESS
+            Else
+            lret = lret Or GENERIC_ALL
+            End If
+
+        Case "W"
+            If strType = "F" Then
+                lret = lret Or FILE_GENERIC_WRITE
+            Else
+                lret = lret Or GENERIC_WRITE
+            End If
+        
+        Case "X"
+            If strType = "F" Then
+                lret = lret Or FILE_GENERIC_EXECUTE
+            Else
+                lret = lret Or GENERIC_EXECUTE
+            End If
+
+        Case "D"
+                lret = lret Or FILE_GENERIC_DELETE
+
+        Case "C"
+            If strType = "F" Then
+                lret = lret Or FILE_GENERIC_READ Or FILE_GENERIC_EXECUTE _
+                Or FILE_GENERIC_DELETE Or FILE_GENERIC_WRITE
+            Else
+                lret = lret Or GENERIC_READ Or GENERIC_WRITE _
+                Or GENERIC_EXECUTE Or FILE_GENERIC_DELETE
+            End If
+                
+        Case "P"
+                lret = lret Or FILE_PERMISSION_ACCESS
+        Case "O"
+                lret = lret Or FILE_OWNERSHIP_ACCESS
+        Case "R"
+            If strType = "F" Then
+                lret = lret Or FILE_GENERIC_READ
+            Else
+                lret = lret Or GENERIC_READ
+            End If
+    End Select
+    Next
+
+FileRightsID = lret
+End Function
+
+
+Function  CreateErrMsg(objErr,sMsg)
+Dim sTemp
+ sTemp = "Error# [" & Err & "] " & Err.Description 
+ If Not sMsg = "" Then sTemp = sTemp & vbCrLf & sMsg
+ CreateErrMsg = sTemp
+End Function
+]]>
+</script>
+
+</component>

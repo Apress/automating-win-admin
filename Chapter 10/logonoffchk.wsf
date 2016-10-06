@@ -1,0 +1,52 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:logonoffchk.wsf
+lists all event log events for events 529 and 539, which are logon/off failures
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+Const wbemFlagReturnImmediately  =16 
+Const wbemFlagForwardOnly = 32
+Dim objService, objWMI, nTimeZone, objWMISet, objEvent, objOut, strComputer
+ 
+If WScript.Arguments.Count = 0 Then
+  WScript.Echo "You must specify a computer"
+  WScript.Quit
+End If
+strComputer = WScript.Arguments(0)
+
+'bind to the WMI service, note the Security privelige is specified, this
+'is require to access the Security log
+Set objService = GetObject("winmgmts:{impersonationLevel=impersonate," & _
+                            "(Security)}!\\" & strComputer)
+
+'get time zone
+Set objWMI = objService.Get("Win32_ComputerSystem='" & strComputer & "'")
+
+nTimeZone = objWMI.Currenttimezone
+
+'execute query, filtering on event # 529 or 539 (Logon/Logoff access
+'from Security logs
+'only retrieve entries within the last two days
+ Set objWMISet = objService.ExecQuery("SELECT InsertionStrings, " & _
+   "TimeWritten FROM Win32_NTLogEvent WHERE " & _
+   " (EventIdentifier=529  Or EventIdentifier=539) And LogFile='Security'" & _
+   " AND Type='audit failure' AND  TimeWritten > '" & _
+    Convert2DMTFDate(DateAdd("h", -1, Now), nTimeZone) & "' ",, _
+	 wbemFlagReturnImmediately + wbemFlagForwardOnly)
+
+ Set objOut = Wscript.Stdout 
+ 'loop through each event 
+ For Each objEvent In objWMISet
+    'make sure there are insertion strings to write
+    If UBound(objEvent.InsertionStrings) > 0 Then
+      objOut.WriteLine objEvent.InsertionStrings(0) & " for user:" & _ 
+	                  objEvent.InsertionStrings(1)
+     objOut.WriteLine "Time: " & DMTFDate2String(objEvent.TimeWritten)
+     objOut.WriteLine "Workstation: " & objEvent.InsertionStrings(6)
+	End If
+ Next
+ ]]>
+ </script>
+</job>

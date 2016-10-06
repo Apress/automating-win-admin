@@ -1,0 +1,28 @@
+<?xml version="1.0" ?>
+<job>
+<reference object="Word.Document" version="10.0"/> 
+<!--comment
+Build a simple table and fill in some cells
+-->
+ <script language="VBScript">
+ <![CDATA[
+ Dim nF, nI, objWord, objWordDoc
+ 
+ On Error Resume Next
+
+ Set objWord = CreateObject("Word.Application")
+
+ objWord.Visible = True
+  
+  With objWord
+   'create a new document 
+   .Documents.Add
+   .ActiveDocument.Tables.Add .Selection.Range, 2, 3
+
+  End With
+
+ Set objWord = Nothing
+ Set objFSO = Nothing
+  ]]>
+  </script>
+</job>

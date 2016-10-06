@@ -1,0 +1,64 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:rmtexecute.wsf
+Description:
+Executes applications on remote machine
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+ Option Explicit
+ Dim avar, strMachine, strApp
+ Dim nProcID, objProcess, nResult
+ strMachine = Null
+ nProcID = Null
+
+ On Error Resume Next
+ 'check if script is being run from command prompt
+ If Not IsCscript Then 
+  ExitScript _
+      "This script must be run from command line using cscript.exe",False
+ End If 
+
+ 'check the argument count
+ If Wscript.Arguments.Count <> 2 Then 
+  ShowUsage
+  WScript.Quit
+ End If
+  
+  'get machine and application name
+  strMachine = Wscript.Arguments(0)
+  strApp = Wscript.Arguments(1)
+  
+  'get a reference to the Win32Process class object on specified machine
+  Set objProcess = GetObject("winmgmts:{impersonationLevel=impersonate}!" & _
+                  "\\" & strMachine & "\root\cimv2:Win32_Process" )
+
+  If Err Then  ExitScript _
+              "Unable to get reference to machine" & strMachine, False
+ 
+  'create process on remote machine
+  nResult = objProcess.Create(strApp,Null,Null,nProcID)
+ 
+  If nResult = 0 Then
+   WScript.Echo "Application " & strApp & _ 
+                    " started with process id: " & nProcId 
+  Else
+   WScript.Echo "Unable to start application '" & strApp & _
+                    "' on computer " & strMachine
+  End If
+
+ Set objProcess = Nothing
+   
+Sub ShowUsage
+  WScript.Echo "rmtexecute executes programs on remote computers" & vbCrLf & _
+  "Syntax:"  &  vbCrLf & _
+  "rmtexecute.wsf computer application" & vbCrLf & _
+  "computer    name of computer to start application" & vbCrLf & _ 
+  "application name of application to start" & vbCrLf & _ 
+  "Example: start notepad on computer thor:" & vbCrLf & _
+  "rmtexecute.wsf thor notepad.exe"
+End Sub
+ ]]>
+ </script>
+</job>

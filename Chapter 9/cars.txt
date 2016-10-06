@@ -1,0 +1,7 @@
+"GM","Grand Am","Sedan",25000
+"GM","Yukon","Truck",40000
+"Ford","Mondeo","Sedan",23000
+"BMW","Z3","Sports",50000
+"Hyundai","Excel","Compact",17000
+"Ford","Festiva","Compact",12000
+"Ford","Explorer","Truck",35000

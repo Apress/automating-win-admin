@@ -1,0 +1,273 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:shrmaint.wsf
+Description:
+Performs network share maintenance
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+
+ Option Explicit
+
+ Dim avar, objDescriptor, objACE, objACE2, objTrustee, aDACL, objArgs
+ Dim strShareName, objInstance, strMachine,  strPermission 
+ Dim objService, strAccountName, nF, bFound, nI
+
+ strMachine = Null
+
+ 'check if script is being run from command prompt
+ If Not IsCscript Then 
+  ExitScript _
+      "This script must be run from command line using cscript.exe",False
+ End If 
+
+ 'get the command line arguments
+ Set objArgs = Wscript.Arguments
+
+ 'check the argument count
+ If objArgs.Count > 0 Then 
+
+  strMachine = "" 
+  GetArguments
+
+  On Error Resume Next
+  'get reference to local or remote computer
+  Set objService = GetObject( _
+               "winmgmts:{impersonationLevel=impersonate}" & strMachine)
+  
+  If Err Then _
+     ExitScript "Unable to connect to computer " & strMachine, False
+
+
+  'check if share name specified
+  If Not strShareName = "" Then
+    Set objInstance = _
+            objService.Get("Win32_LogicalShareSecuritySetting.Name='" _
+             &  strShareName & "'")
+
+    'get an instance of the security descriptor for the share
+     avar = objInstance.GetSecurityDescriptor(objDescriptor)
+  
+     aDACL = objDescriptor.dacl
+
+   'if no actions specified then list existing permissions for share
+   If strPermission = "" Then
+  
+    'loop through each ACE in the DACL  
+    For Each objACE In aDACL
+              Wscript.Echo objACE.Trustee.Name, _ 
+                  GetPermissionString(objACE.AccessMask, objACE.AceType)
+
+    Next
+   
+   Else 'set permissions for share
+
+    'loop through each ACE in the DACL  
+    For nF = Lbound(aDACL) To Ubound(aDACL)
+      Set objACE = aDACL(nF)
+      'check if ACL exists for specfied account name..
+      If Strcomp(objACE.Trustee.Name, strAccountName,1) = 0 Then
+         bFound = True    
+          Exit For
+      End If
+      
+    Next
+    
+    'are we revoking the permissions?
+    If strPermission = "REVOKE" Then
+     'does the account specified to revoke exist?
+     If bFound Then
+       'check if array needs resizing to remove account
+       If UBound(aDACL)>nF Then
+        'resize the DACL array to remove the revoked account
+        For nI = nF To UBound(aDACL)-1
+          Set aDACL(nI) = aDACL(nI+1)
+        Next
+       End If
+      
+       ReDim Preserve aDACL(UBound(aDACL)-1)       
+       
+     Else
+        ExitScript "Could not find user " & strAccountName, False        
+     End If
+    Else
+     'get instances of WMI Win32 ACE and Trustee objects
+     Set objACE2 = objService.Get("Win32_ACE")
+     Set objTrustee = objService.Get("Win32_Trustee") 
+     If Err Then _
+                ExitScript "Error occurred creating Win32_ACE " _
+                        & "and Win32_Trustee objects", False
+
+    'set trustee information    
+    objTrustee.Name = strAccountName
+    'attempt to get binary SID value for account
+    objTrustee.SID = GetBinarySID(strAccountName)
+    'check if user was found
+    If IsNull(objTrustee.SID) Then
+        ExitScript "Could not find user " & strAccountName, False
+    End If
+
+    'set ACE information
+    objACE2.Trustee = objTrustee
+    objACE2.AceType = 0
+     'check if no access is specified - then AceType must be 1
+      If Ucase(strPermission) = "NOACCESS" Then
+        objACE2.AceType = 1
+      Else
+         objACE2.AceType = 0
+     End If
+    
+     objACE2.AccessMask = GetPermissionValue(strPermission) 
+
+     If objACE2.AccessMask = 0 Then _
+            ExitScript "Invalid permission " & strPermission, False
+
+     'if user exists in DACL, then update existing ACE
+     If bFound Then
+      Set aDACL(nF) = objACE2
+     Else
+      'resize DACL array and assign to security descriptor    
+      ReDim Preserve aDACL(UBound(aDACL) + 1)
+      Set aDACL(UBound(aDACL)) = objACE2
+     End If
+    
+    End If
+    
+    objDescriptor.dacl = aDACL
+
+    'set the security descriptor
+    avar = objInstance.SetSecurityDescriptor(objDescriptor)
+
+    If avar<>0 Or Err Then _
+            ExitScript "Error occurred setting security descriptor",False
+    End If
+    
+    Set objACE2 = Nothing
+    Set objTrustee = Nothing    
+ Else
+  ShowUsage   
+ End If
+ 
+ Set objDescriptor = Nothing
+ Set objService = Nothing
+ 
+Else
+ ShowUsage
+End If
+
+  'Reads command line arguments and sets appropriate flags
+  Sub GetArguments
+  Dim nF, strArg
+
+  'loop through command line parameters
+  For nF = 0 to objArgs.Count - 1
+
+   Select Case Ucase(objArgs(nF))
+
+     Case "/MACHINE" 'gets machine name
+                strMachine = "!\\" & GetParameter(nF)
+               
+     Case "/SHARE" 
+                strShareName = GetParameter(nF)
+
+     Case "/GRANT" 
+        strAccountName = GetParameter(nF)
+        nF = nF+1
+        strPermission = GetParameter(nF)        
+
+     Case "/REVOKE" 
+        strAccountName = GetParameter(nF)
+        strPermission = "REVOKE"
+
+   End Select
+
+   Next
+  End Sub
+
+ 'gets next command line argument
+ 'Parameters nIndex command line argument number to process
+ Function GetParameter(nIndex)
+
+  If nIndex+1> objArgs.Count-1 Then ExitScript "Not enough arguments", True
+  GetParameter = objArgs(nIndex+1)
+
+ End Function
+
+ Sub ShowUsage
+  WScript.Echo "shrmaint performs network share maintenance" & vbLf & _
+  "Syntax:"  &  vbLf & _
+  "shrmaint.wsf /SHARE name [/MACHINE name] [/GRANT account " & vbLf & _
+  "permissions | REVOKE account]" & vbLf & _
+  "/SHARE   name of share to process" & vbLf & _ 
+  "/MACHINE optional name of machine where shares reside" & vbLf & _
+  "/GRANT   optional permissions to grant: NOACCESS," & vbLf & _
+  " FULL, READ or CHANGE" & vbLf & _
+  "            the account is the name of a user or group account"  _
+  & vbLf & "Example: list permissions for DATA share:" & vbLf & _
+  "shrmaint.wsf /SHARE data" & vbLf & _
+  "Example:grant freds permissions for admin share on machine Thor:" & _
+   vbLf & "shrmaint.wsf /SHARE admin /MACHINE Thor /GRANT freds read "
+ 
+ End Sub
+
+  'GetPermissionString returns a descriptive string for specified
+  'numeric permissions value.
+  'Parameters:
+  'nPermission  Permission value to evaluate
+  'Returns:
+  'string value representing security permission. Emtpy string if 
+  '          permission value not found
+  Function GetPermissionString(nPermission, nType)
+  
+  If nType = 1 Then
+      GetPermissionString = "No Access"
+    Exit Function
+  End If
+
+  Select Case nPermission
+
+    Case 2032127, 268435456
+        GetPermissionString = "Full Access"
+
+    Case 1245631
+        GetPermissionString = "Change"
+
+    Case 1179817
+        GetPermissionString = "Read"
+
+    Case Else
+        GetPermissionString = ""
+   End Select
+
+  End Function
+
+  'GetPermissionValue returns a numeric value for specified
+  'permissions string.
+  'Parameters:
+  'strPermission value to evaluate
+  'Returns:
+  'numeric value representing security permission. Returns 0
+  'if invalid permissions string
+  Function GetPermissionValue(strPermission)
+
+  Select Case Ucase(strPermission)
+
+    Case "FULL", "NOACCESS"
+        GetPermissionValue = 2032127
+
+    Case "CHANGE", "C"
+        GetPermissionValue = 1245631
+
+    Case "READ","R"
+        GetPermissionValue = 1179817
+
+    Case Else
+        GetPermissionValue = 0
+   End Select
+
+  End Function
+
+  ]]>
+ </script>
+</job>

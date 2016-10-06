@@ -1,0 +1,143 @@
+<?xml version="1.0"?>
+<component>
+
+<registration
+	description="CopyTable"
+	progid="WSHENT.CopyTable"
+	version="1.00"
+	classid="{f8329d80-0b7e-11d3-bbe1-00104b164591}"
+>
+</registration>
+
+<public>
+	<property name="Source">
+		<put/>
+	</property>
+	<property name="Destination">
+		<put/>
+	</property>
+
+	<property name="Table">
+		<put/>
+	</property>
+	<property name="LastQuery">
+		<get/>
+	</property>
+	<property name="Error">
+		<get/>
+	</property>
+	<method name="CopyTable">
+	</method>
+</public>
+
+<script language="VBScript">
+<![CDATA[
+
+Const adVarWChar = 202
+Const adWchar = 130
+Const adVarChar = 200
+Const adCmdText = 1
+
+Dim objRst, objConnDestination, strTargetTable, LastQuery,ErrorString 
+
+Function put_Source(newValue)
+	Set objRst = newValue
+End Function
+
+Function put_Destination(newValue)
+	Set objConnDestination = newValue
+End Function
+
+Function put_Table(newValue)
+	strTargetTable = newValue
+End Function
+
+
+Function Get_LastQuery()
+	get_LastQuery = LastQuery
+End Function
+
+
+Function get_Error()
+	get_Error = ErrorString
+End Function
+
+
+Function CopyTable()
+Dim strInsertQuery, strValues
+
+Dim objField
+On Error Resume Next
+
+'make sure not empty file..
+If Not objRst.EOF Then
+    
+    'build the initial insert query..
+    strInsertQuery = "INSERT INTO " & strTargetTable & " ("
+    
+    For Each objField In objRst.Fields
+        strInsertQuery = strInsertQuery & objField.Name & ","
+    Next
+        
+    'remove the last comma and append a bracket
+    strInsertQuery = Left(strInsertQuery, Len(strInsertQuery) - 1) & ") VALUES ("
+    
+    Do While Not objRst.EOF
+        
+        strValues = ""
+        For Each objField In objRst.Fields
+            
+                
+                'Debug.Print objField.Value, objField.Type
+                Select Case objField.Type
+                
+                'check if it's a character string..
+                Case adVarWChar, adWchar, adVarChar
+                    If IsNull(objField.Value) Then
+                     strValues = strValues &  "Null,"		    
+ 		    Else		
+                     strValues = strValues & Chr(34) & objField.Value & Chr(34) & ","
+		    End If	
+                'otherwise non-character string
+                Case Else
+                    If IsNull(objField.Value) Then
+                     strValues = strValues &  "Null,"		    
+ 		    Else		
+                     strValues = strValues & objField.Value & ","
+		    End If	
+                
+                End Select
+                
+        Next
+		LastQuery = strInsertQuery & Left(strValues, Len(strValues) - 1) & ")"
+                objConnDestination.Execute (LastQuery)
+
+		If Err Then 
+		 ErrorString = CreateErrMsg (Err, _
+		     "Error occured after attempting to add data" & vbCrLf & LastQuery)
+			CopyTable = False
+			Exit Function
+		End If
+
+        objRst.MoveNext
+        Loop
+    
+End If
+
+CopyTable = True
+
+End function
+
+Function  CreateErrMsg(objErr,sMsg)
+Dim sTemp
+
+ sTemp = "Error# [" & Err & "] " & Err.Description 
+ If Not sMsg = "" Then sTemp = sTemp & vbCrLf & sMsg
+ CreateErrMsg = sTemp
+End Function
+
+
+]]>
+</script>
+
+</component>

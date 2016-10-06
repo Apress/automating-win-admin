@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<job>
+<reference object="ADODB.Recordset"/>  
+<!--comment
+Script:enumtbl.wsf
+enumerate all records from a table
+-->
+ <script language="VBScript">
+  <![CDATA[
+   Option Explicit
+   Dim objRst, objConn
+
+   'create a ADO connection and open a Access database
+   Set objConn = CreateObject("ADODB.Connection")
+   objConn.Open "Provider=Microsoft.Jet.OLEDB.4.0;" & _
+               "Data Source=e:\nwind.mdb"
+
+  'check if script is run using Wscript or Cscript
+   If Not StrComp(Right(Wscript.Fullname,11),"cscript.exe",vbTextCompare)=0 Then    
+       Wscript.Echo "This script is best run using Cscript.exe"
+    Wscript.Quit
+   End If
+
+   'execute the query against the provider
+   Set objRst = objConn.Execute("Select * From Customers",, adCmdText)
+   'loop through each record in the recordset and ouput the Companyname
+   While Not objRst.Eof 
+    Wscript.Echo objRst.Fields("CompanyName")
+    objRst.MoveNext
+   Wend
+
+  objRst.Close
+  objConn.Close
+   ]]>
+  </script>
+</job>

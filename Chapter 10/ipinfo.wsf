@@ -1,0 +1,117 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:ipinfo.wsf
+Description:lists ip information 
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+ Option Explicit
+ Const wbemFlagReturnImmediately  =16 
+ Const wbemFlagForwardOnly = 32
+ 
+ Dim objWMIObject, nF, objWMIObjects, objService, bFirst
+
+  On Error Resume Next
+  
+  'check if command line argument specified, if so then connect to 
+  'remote computer
+  If WScript.Arguments.Count = 1 Then
+    Set objService = GetObject( _
+                  "winmgmts:{impersonationLevel=impersonate}!" _ 
+                   & "\\" & WScript.Arguments(0))
+  Else
+    Set objService = GetObject( _
+                  "winmgmts:{impersonationLevel=impersonate}")
+  End If
+
+ If Err Then _
+      ExitScript("Error getting reference to WMI service")
+
+  Set objWMIObjects = _
+                  objService.ExecQuery( _
+                  "Select * From Win32_NetworkAdapterConfiguration" _ 
+                & " Where IPEnabled = True",, wbemFlagReturnImmediately  + wbemFlagForwardOnly)
+
+ If Err Then _
+      ExitScript("Error getting reference to network adapter information")
+
+   bFirst = False
+  'loop through each IP enabled device
+  For Each objWMIObject In objWMIObjects
+    'is it the first adapter -print IP info that applies to all adapters
+    If Not bFirst Then
+
+      If Not objWMIObject.DNSDomain = "" Then 
+          WScript.Echo "DNS Domain:" & objWMIObject.DNSDomain
+      End If    
+    
+      If Not objWMIObject.DNSHostName = "" Then 
+          WScript.Echo "DNS Host:" & objWMIObject.DNSHostName
+      End If    
+        
+       If Not objWMIObject.WINSScopeID = "" Then _
+                 WScript.Echo "NETBIOS Scope ID: "& _
+                              objWBEMObject.WINSScopeID
+
+      WScript.Echo "DNS Enabled for WINS resolution:" _
+                   & Cbool(objWMIObject.DNSEnabledForWinsResolution) 
+    
+       bFirst = True
+       WScript.Echo
+    End If
+    
+    ShowInfo(objWMIObject)
+    WScript.Echo
+  Next
+
+
+  'Procedure: showinfo
+  'lists IP related information for specified network device
+  'Parameters:
+  'objWBEMObject Object representing network device
+  Sub ShowInfo(objWBEMObject)
+   WScript.Echo "Device#:" & objWBEMObject.Index
+   WScript.Echo objWBEMObject.Description
+
+   'loop through each IP address for the adapter
+    For nF = Lbound(objWBEMObject.IPAddress) To _
+                                        Ubound(objWBEMObject.IPAddress)
+        WScript.Echo "IP Address:" & objWBEMObject.IPAddress(nF) _
+                & " Subnet Mask:" & objWBEMObject.IPSubnet(nF)
+    Next
+
+  'check if IP gateway addresses assigned
+  If Not IsNull(objWBEMObject.DefaultIPGateway) Then
+  'list all ip gateways
+   For nF = Lbound(objWBEMObject.DefaultIPGateway) _ 
+             To Ubound(objWBEMObject.DefaultIPGateway)
+    WScript.Echo "IP Gateway:" & objWBEMObject.DefaultIPGateway(nF)
+   Next
+  End If
+  
+ 'list DHCP related info
+   WScript.Echo "DHCP Enabled:" & objWBEMObject.DHCPEnabled 
+   If objWBEMObject.DHCPEnabled Then
+        WScript.Echo "DHCP Lease Obtained:" _
+          & DMTFDate2String(objWBEMObject.DHCPLeaseObtained)
+
+      WScript.Echo "DHCP Lease Expires:" _
+          & DMTFDate2String(objWBEMObject.DHCPLeaseExpires)
+   End If    
+
+  'list MAC address and WINS server information
+   WScript.Echo "MAC Address :" & objWBEMObject.MACAddress
+
+   WScript.Echo "WINS primary server  :" _
+    & objWBEMObject.WINSPrimaryServer
+
+   WScript.Echo "WINS secondary server:" & _
+                   objWBEMObject.WINSSecondaryServer
+   
+   Set objWBEMObject = Nothing
+  End Sub
+
+  ]]>
+  </script>
+</job>

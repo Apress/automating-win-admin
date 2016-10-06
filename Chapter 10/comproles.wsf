@@ -1,0 +1,49 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:comproles.wsf
+Description:lists the computer roles associated with specified computer
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+  Option Explicit
+
+  Dim role, strLine, objService
+  Dim objWMIObject, objNetwork, objArgs, strComputer, objWMI
+  
+  'get arguments
+  Set objArgs = Wscript.Arguments
+
+  Set objWMI = New WMISupport
+  
+  'if there is an argument, then it is another computer to list roles
+  If objArgs.Count = 1 Then
+      strComputer = objArgs(0)
+    objWMI.Computer = strComputer
+  Else 'get the roles of local computer
+      Set objNetwork = Wscript.CreateObject("Wscript.Network")
+    strComputer = objNetwork.ComputerName
+    Set objNetwork = Nothing
+  End If
+
+  'create an WMI Service object
+  Set objService = objWMI.Connect()
+
+  'get a reference to the Win32_ComputerSystem object for specified computer
+  Set objWMIObject = objService.Get( "Win32_ComputerSystem.Name='" _ 
+                           & strComputer & "'")
+
+  
+  'loop through each computer role and append to string
+  For Each role In objWMIObject.roles
+     strLine = strLine & role  & ", "
+  Next
+
+  Wscript.Echo Left(strLine, Len(strLine) - 2)
+
+  Set objWMIObject = Nothing
+  Set objService = Nothing
+  Set objWMI = Nothing
+  ]]>
+  </script>
+</job>

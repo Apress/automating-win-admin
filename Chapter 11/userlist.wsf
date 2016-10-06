@@ -1,0 +1,17 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+userlist.wsf
+list all users who are allowed to send messages
+-->
+ <script language="VBScript" src="msnlib.vbs">
+<![CDATA[
+  Dim objMessenger, objUser
+  Set objMessenger = StartMessenger("freds@hotmail.com", "sderf!@#")
+  'loop through and list each user who is allowed to send messages to you
+  For Each objUser In objMessenger.List(MLIST_ALLOW)
+     WScript.Echo objUser.FriendlyName, objUser.LogonName
+  Next
+  ]]>
+  </script>
+</job>

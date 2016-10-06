@@ -1,0 +1,142 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+'Script:xchgmaint.wsf
+'Description:Updates Exchange mailboxes from standard input
+-->
+ <script language="VBScript" src="adsilib.vbs">
+ <![CDATA[
+ 
+ Option Explicit
+
+ Dim nF, objFSO, objTextStream, strLine
+ Dim objArgs, strServer, strSite 
+ Dim objContainer, strContainer 
+ Dim aFields, aValues, strDelim
+ Dim bUpdate, objComputer, strOrg
+ 
+ ReDim aFields(0), aValues(0)
+ strDelim = ","
+ If Not IsCscript Then
+  ExitScript("This script must be run from command line using cscript.exe")
+ End If
+
+ 'get the command line arguments
+ Set objArgs = Wscript.Arguments
+
+ bUpdate = False
+
+ 'check the argument count
+ If objArgs.Count>1 Then 
+
+   strServer = objArgs(0) ' Exchange server name
+   strSite = objArgs(1)  'Exchange site name
+
+   Set objComputer = GetObject("LDAP://" & strServer)
+   If Err Then _
+         ExitScript "Error getting reference to Exchange server" & strServer
+
+   'get the organization
+   strOrg = objComputer.o
+   Set objComputer = Nothing
+
+   'get the command line arguments
+   GetArguments
+   ProcessStdIn 'process stdin - multiple mailboxes
+
+  Else
+   ShowUsage
+  End If
+
+ 'Reads command line arguments and sets appropriate flags
+ Sub GetArguments
+ Dim nF, strArg
+
+ 'loop through command line parameters
+ For nF = 1 to objArgs.Count - 1
+   strArg= Ucase(objArgs(nF))
+   'check if delimiter flag
+   If Left(strArg, 3)= "/D:" Then strDelim = Trim(Mid(strArg,4))
+  Next
+ End Sub
+
+ 'Process stdin for list of mailboxes to process
+ Sub ProcessStdIn()
+
+   'get the standard input
+   Set objTextStream = Wscript.StdIn
+
+   'check if no standard input has been piped to the script
+   If objTextStream.AtEndOfStream Then
+      ExitScript("No standard input to process")
+   End If
+
+  'get the first line of the text stream - should be the column field names
+   strLine = objTextStream.ReadLine
+
+  'check if the stream has reached end of line, exit since no data found
+   If objTextStream.AtEndOfStream Then _
+                ExitScript("no data found in stream")
+
+   'split the fields into an array     
+   aFields = Split(strLine, ",")
+     
+   'loop until the end of the text stream has been encountered
+   Do While Not objTextStream.AtEndOfStream
+     strLine = objTextStream.ReadLine
+     aValues = Split(strLine, strDelim)
+     UpdateMailbox
+   Loop
+
+  objTextStream.Close
+
+ End Sub
+
+ 'update mailbox
+ Sub UpdateMailbox
+ Dim objMailBox
+
+   Set objMailBox = _
+           GetObject("LDAP://" & strServer & "/cn=" & aValues(0) & _ 
+               ",cn=Recipients,ou=" & strSite & ",o=" & strOrg)
+
+   If Err Then 
+         ExitScript "Error getting reference to mailbox " & aValues(0)
+   Else     
+           Wscript.Echo "---Setting properties for: " & aValues(0)
+        'loop through and update all the properties
+          For nF = 1 to Ubound(aFields)
+        
+           'check if numeric value 
+         If IsNumeric(aValues(nF))  Then 
+            objMailbox.Put Trim(aFields(nF)), Clng(aValues(nF))
+        ElseIF Ucase(aValues(nF))="TRUE" OR Ucase(aValues(nF))="FALSE" Then
+            objMailbox.Put Trim(aFields(nF)), Cbool(aValues(nF))           
+        ElseIF IsDate(aValues(nF)) Then
+            objMailbox.Put Trim(aFields(nF)), Cdate(aValues(nF))                    
+             Else
+                objMailbox.Put Trim(aFields(nF)), aValues(nF)
+          End if
+           Wscript.Echo "Setting " & Trim(aFields(nF)) & " to:" _
+                     & aValues(nF)
+          objMailbox.SetInfo
+         Next
+   End If
+          
+     set objMailBox= Nothing
+ End Sub
+
+ 'displays script usage information
+ Sub ShowUsage()     
+
+ WScript.Echo "xchgmaint provides mailbox maintenance. " & vbLf & _ 
+     "Syntax:" &  vbLf & _
+   "xchgmaint.wsf server site [/d:delimiter]" _
+   & vbLf & "server Exchange server " & vbLf & _ 
+    "site   Exchange site" & vbLf & _
+    "/d:delimiter delimiter to separate columns from standard input" 
+    WScript.Quit -1
+ End Sub
+  ]]>
+  </script>
+</job>

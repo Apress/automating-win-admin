@@ -1,0 +1,244 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:ipmaint.wsf
+Description:
+Performs IP adapter maintenance
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+ Dim objWMINetAdapter, objWMINetConfig, nF
+ Dim nDevice, strAddress, strAction, strGatewayAddress, strDHCPAction
+ Dim strWINSPrimary, strWINSSecondary, bWINSAddress, strDHCPAllAction 
+ Dim bLMHostsLookup, bDNSForWinsRes, strWINSScopeID, bEnableWins
+ Dim aAddress, strDNSDomain, nResult
+  strDHCPAction = "" 
+ strAddress = "" 
+ nDevice = 1
+ strDNSDomain = ""
+ 
+ 'check if script is being run from command prompt
+ If Not IsCscript Then 
+  ExitScript "This script must be run from command line using cscript.exe",False
+ End If 
+
+ 'check the argument count
+ If WScript.Arguments.Count = 0 Then 
+   ShowUsage 
+   WScript.Quit
+ End If
+
+   'get an instance of the Win32_NetworkAdapterConfiguration class
+   Set objWMINetConfig = _ 
+    GetObject(WMICONST & "Win32_NetworkAdapterConfiguration")  
+    
+   If Err Then _
+       ExitScript "Unable to get a reference to IP information", True
+
+   'retrieve current default settings for IP global settings..
+   bLMHostsLookup = objWMINetConfig.WINSEnableLMHostsLookup
+   bDNSForWinsRes = objWMINetConfig.DNSEnabledForWINSResolution
+   strWINSScopeID = objWMINetConfig.WINSScopeID
+   bEnableWins = False
+ 
+   strWINSPrimary = objWMINetConfig.WINSPrimaryServer       
+   strWINSSecondary = objWMINetConfig.WINSSecondaryServer
+   bWINSAddress = False
+
+   GetArguments
+
+   'check if WINS enabling is specified
+   If bEnableWins Then    
+    'enable WINS settings   
+       nResult = objWMINetConfig.EnableWINS(bDNSForWinsRes, bLMHostsLookup _
+                 , Null, strWINSScopeID) 
+
+    If Err  Then ExitScript "Error enabling WINS settings", True
+    WScript.Echo "Successfully set WINS settings"
+   End If
+
+  'check if DHCP operation for all devices is specified
+   If Not strDHCPAllAction = "" Then
+    'release ALL DHCP addresses?
+       If strDHCPAction = "RELEASEDHCP" Then
+        nResult = objWMINetConfig.ReleaseDHCPLeaseAll
+
+        If Err Or Not nResult = 0 Then _ 
+           ExitScript "Error releasing DHCP leases", True
+
+        WScript.Echo "Successfully released all DHCP leases"
+    Else
+        nResult = objWMINetConfig.RenewDHCPLeaseAll    
+
+        If Err Or Not nResult = 0 Then _ 
+           ExitScript "Error renewing DHCP leases", True
+
+        WScript.Echo "Successfully renewed DHCP leases"
+    End If
+    
+  End If
+
+  'check if network card information is to be set
+  If bWINSAddress Or Not strGatewayAddress = "" Or Not strAddress = "" _ 
+          Or Not strDHCPAction = "" Or Not strWINSPrimary = "" _
+        Or Not strWINSSecondary = "" Or Not strDNSDomain = "" Then
+
+    'get the network adapter to set        
+    Set objWMINetAdapter = GetObject(WMICONST & _
+                           "Win32_NetworkAdapterConfiguration.Index=" _
+                           & nDevice)
+
+    If Err Then _
+         ExitScript "Error getting reference to network adapter" _ 
+                    & nDevice, True
+
+    'set WINS server addresses for adapter
+      If bWINSAddress Then
+        nResult = objWMINetAdapter.SetWINSServer(strWINSPrimary _ 
+                                           , strWINSSecondary)
+        If Err Or Not nResult = 0 Then _
+             ExitScript "Error enabling WINS settings", True 
+        WScript.Echo "Successfully set WINS server addresses"        
+      End If
+
+    If strDHCPAction = "ENABLEDHCP" Then 
+          nResult = objWMINetAdapter.EnableDHCP
+          WScript.Echo nResult
+        If Err Or Not nResult = 0 Then _
+             ExitScript "Error enabling DHCP", True
+        WScript.Echo "Successfully enabled DHCP"        
+      
+    End If
+
+    If Not strDNSDomain = "" Then 
+      nResult = objWMINetAdapter.SetDNSDomain(strDNSDomain)
+      If Err Or Not nResult = 0 Then _
+          ExitScript "Error setting DNS domain", True
+      WScript.Echo "Successfully DNS domain"        
+    End If
+
+    'set default gateway address
+    If Not strGatewayAddress = "" Then
+          nResult = objWMINetAdapter.SetGateways(Array(strGatewayAddress))
+        If Err Or Not nResult = 0 Then _
+            ExitScript "Error setting default gateway", True
+        WScript.Echo "Successfully default gateway address"        
+    End If
+    
+    'check if static IP address is specified for adapter
+    If Not strAddress = "" Then
+
+     aAddress = Split(strAddress,":")
+      If Ubound(aAddress)<>1 Then
+         ExitScript "Must specify IP address and subnet seperated " _
+                       & "by a colon e.g. 192.168.1.1:255.255.255.0" _
+                       , True
+      Else
+          nResult = objWMINetAdapter.EnableStatic(Array(aAddress(0)) _
+                                              ,Array(aAddress(1)))
+          WScript.Echo nResult, aAddress(0),aAddress(1)
+        If Err Or Not nResult = 0 Then _
+               ExitScript "Error setting static IP address " _ 
+                        & strAddress, True
+            WScript.Echo "Successfully set static IP addresses"        
+        End If
+    End If  
+ End If
+ 
+ Sub ShowUsage
+ WScript.Echo "ipmaint provides IP network settings admin" & vbCrLf & _ 
+ "Syntax:"  &  vbCrLf & _
+ "ipmaint.wsf [optional parameters]" &  vbCrLf & _
+ "IPmaint assumes default network card when setting IP settings" & vbCrLf & _    
+ "unless otherwise specified" &  vbCrLf & _
+ "/DEVICE Device Specifies a device number to set, default is 1" & vbCrLf & _ 
+ "/STATIC address:subnet sets static IP address" & vbCrLf & _ 
+ "/RELEASEDHCP releases the DHCP address for current adapter" & vbCrLf & _
+ "/ENABLEDHCP  enables DHCP address resolution for current device" & vbCrLf & _
+ "/RENEWDHCP   renews IP address for current adapter" & vbCrLf & _
+ "/RELEASEALLDHCP releases all DHCP addresses" & vbCrLf & _ 
+ "/RENEWALLDHCP  renews all DHCP addresses" & vbCrLf & _
+ "/GATEWAY       specifies default gateway IP address" & vbCrLf & _
+ "/WINSPRIMARY   sets primary wins server IP address" & vbCrLf & _
+ "/WINSSECONDARY sets secondary wins server IP address" & vbCrLf & _
+ "/DNSFORWINSRES boolean parameter - set DNS for WINS resolution" & vbCrLf & _
+ "/DNSDOMAIN     sets DNS domain" & vbCrLf & _    
+ "/WINSSCOPEID   sets WINS scope ID" & vbCrLf & _        
+ "" & vbCrLf & _        
+ "Example: set DNS for WINS resoultion and default gateway:" & vbCrLf & _
+ "ipmaint /DNSFORWINSRES True /GATEWAY 10.0.0.1 " & vbCrLf & _        
+ "Example: set static IP for second card:" & vbCrLf & _
+ "ipmaint /STATIC 10.0.0.2:255.255.255.0 /DEVICE 2"
+End Sub
+
+  'Reads command line arguments and sets appropriate flags
+  Sub GetArguments
+  Dim nF, strArg
+
+  'loop through command line parameters
+  For nF = 0 to WScript.Arguments.Count - 1
+
+   Select Case Ucase(WScript.Arguments(nF))
+
+     Case "/DEVICE" 'get device number 
+          nDevice = GetParameter(nF)
+
+     Case "/STATIC" 'set static ip addresses
+        strAddress = GetParameter(nF)
+
+     Case "/RELEASEDHCP" 
+        strDHCPAction = "RELEASEDHCP"
+
+     Case "/ENABLEDHCP" 
+        strDHCPAction = "ENABLEDHCP"
+
+     Case "/RENEWDHCP" 'delimiter
+        strDHCPAction = "RENEWDHCP"
+
+     Case "/RELEASEALLDHCP" 
+        strDHCPAllAction = "RELEASEDHCP"
+
+     Case "/RENEWALLDHCP" 'delimiter
+        strDHCPAllAction = "RENEWDHCP"
+
+     Case "/GATEWAY" 'set default gateway
+        strGatewayAddress = GetParameter(nF)
+
+     Case "/WINSPRIMARY" 'set primary WINS server
+        strWINSPrimary = GetParameter(nF)
+        bWINSAddress = True
+
+     Case "/WINSSECONDARY" 'set secondary WINS server
+        strWINSSecondary = GetParameter(nF)
+        bWINSAddress = True
+
+     Case "/DNSFORWINSRES" 'set DNS for Windows resolutions
+        bDNSForWinsRes = Cbool(GetParameter(nF))
+        bEnableWins = True
+
+     Case "/LMHOSTSLOOKUP" 'enable LMHOSTS lookup
+        bLMHostsLookup = Cbool(GetParameter(nF))
+        bEnableWins = True
+        
+     Case "/WINSSCOPEID" 'set WINS scope ID
+        strWINSScopeID = Cbool(GetParameter(nF))
+        bEnableWins = True
+
+     Case "/DNSDOMAIN" 'set DNS domain
+        strDNSDomain = GetParameter(nF)
+    End Select
+   Next
+  End Sub
+
+ 'gets next command line argument
+ 'Parameters nIndex command line argument number to process
+ Function GetParameter(nIndex)
+
+  If nIndex+1> WScript.Arguments.Count-1 Then _
+                  ExitScript "Not enough arguments", True
+  GetParameter = WScript.Arguments(nIndex+1)
+
+ End Function
+  ]]>
+ </script>
+</job>

@@ -1,0 +1,27 @@
+<?xml version="1.0" ?>
+<job>
+<reference guid="{4AFFC9A0-5F99-101B-AF4E-00AA003F0F07}"/>
+<!--comment
+snpcreate.wsf
+Build a snapshot from the Sales by Year Dialog report in
+the Northwind database
+-->
+ <script language="VBScript">
+ <![CDATA[
+Option Explicit
+Dim objAccess, objForm
+Set objAccess = CreateObject("Access.Application")
+objAccess.OpenCurrentDatabase "e:\northwind.mdb"
+objAccess.DoCmd.OpenForm "Sales by Year Dialog"
+Set objForm = objAccess.Forms("Sales by Year Dialog")
+objForm.Controls("BeginningDate").Value = "1/1/95"
+objForm.Controls("EndingDate").Value = "12/31/95"
+
+'build the report
+objAccess.DoCmd.OutputTo acOutputReport, "Sales by Year", _
+                         "Snapshot Format", "d:\SalesByYear.snp"
+objAccess.Quit
+  ]]>
+  </script>
+</job>
+

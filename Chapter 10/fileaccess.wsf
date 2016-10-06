@@ -1,0 +1,50 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:fileaccess.wsf
+Description:
+Shows all Event log security events on audited files within last 48 hours
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+ Option Explicit
+ Const wbemFlagReturnImmediately  =16 
+ Const wbemFlagForwardOnly = 32
+
+ Dim objService
+ Dim objWMI,objWMISet, objInstance
+ 
+ 'get an WMI Service object. Privilege is set as Security to access 
+ 'security Event logs
+ Set objService =GetObject("winmgmts:{impersonationLevel=impersonate," & _
+                 "(Security)}!root\cimv2")
+
+'execute query, filtering on event # 560 (object access) 
+'from Security logs. Only retrieve entries within the last two days
+ Set objWMISet = objService.ExecQuery("SELECT InsertionStrings, " & _
+    "TimeWritten, Type  FROM Win32_NTLogEvent WHERE " & _
+    "LogFile='Security' AND EventIdentifier=560 AND  TimeWritten > '" & _
+    Convert2DMTFDate(DateAdd("h", -48, Now), 630) & "' ",, _
+	wbemFlagReturnImmediately + wbemFlagForwardOnly)
+    
+  'loop through each instance    
+  For Each objInstance In objWMISet
+
+  'check if there are insertion strings
+   If Not IsNull(objInstance.InsertionStrings) Then
+    If UBound(objInstance.InsertionStrings) > 0 Then
+
+        'if it's file access, then print details. 
+        If objInstance.InsertionStrings(1) = "File" Then
+
+         WScript.Echo objInstance.InsertionStrings(2) _
+                   & " accessed by " & _
+                objInstance.InsertionStrings(7) & " at " & _
+                DMTFDate2String(objInstance.TimeWritten)
+        End If
+    End If
+   End If
+  Next
+  ]]>
+ </script>
+</job>

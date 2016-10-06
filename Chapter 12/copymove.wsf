@@ -1,0 +1,38 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:copymove.wsf
+-->
+ <script language="VBScript" src="maillib.vbs">
+ <![CDATA[
+Dim objSession, objDestFolder, objSourceFolder, objCopiedMessage
+Dim objSourceMessage
+' create a MAPI session,then log on
+Set objSession = CreateObject("MAPI.Session")
+' supply a valid profile
+objSession.Logon "Valid Profile"
+
+Set objDestFolder = GetFolderObj(objSession, _
+                     "Public Folders\All Public Folders\Public Posting")
+'get a reference to the InBox Folder
+Set objSourceFolder = objSession.Inbox
+
+' get a reference to the first message in the InBox Messages collection
+Set objSourceMessage = objSourceFolder.Messages(1)
+'copy the message to the Public Folder - Freds Mail. The StoreID is passed
+'since the destination folder is in a difference InfoStore than the original 
+'source message
+Set objCopiedMessage = objSourceMessage.CopyTo(objDestFolder.ID, _
+ objDestFolder.StoreID)
+'update the copied message. The message will not be available until it is
+'updated
+objCopiedMessage.Update
+
+'now move the message to the destination folder. The message will automatically
+'be moved do not need to invoke the Update method for the moved message to 
+'become available.
+Set objCopiedMessage = objSourceMessage.MoveTo(objDestFolder.ID, _
+                       objDestFolder.StoreID)
+  ]]>
+  </script>
+</job>

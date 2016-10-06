@@ -1,0 +1,56 @@
+<?xml version="1.0" ?>
+<job>
+<runtime>
+    <description>
+<![CDATA[
+This script demonstrates use of WScript.StdIn/Out/Err by
+prompting the user with a set of prompts read from a file
+and then dumping the results of those prompts as a comma-
+separated list to stdout.
+]]>
+    </description>
+    <unnamed name="PromptFile" many="false" required="true" 
+    helpstring="File containing prompts." />
+    <example>
+<![CDATA[
+CScript prompt.wsf Prompts.txt
+
+Suppose Prompts.txt contained
+
+What is the user's name?
+What files should be backed up?  (eg, *.doc)
+
+Then this program would ask the user for the values and
+output
+
+Bob,*.txt
+]]> 
+    </example>
+</runtime>
+<script language="VBScript" src="fsolib.vbs">
+<![CDATA[
+
+Dim strPromptFile, strPrompts
+
+Sub AskUser
+    Dim aPrompts, strPrompt, fComma
+    aPrompts = Split(strPrompts, vbCrLf)
+        fComma = False
+    For Each strPrompt In aPrompts
+        ' The file may contain blank lines.
+        If Trim(strPrompt) <> "" Then
+            If fComma Then WScript.StdOut.Write ","
+            WScript.StdErr.Write strPrompt
+            WScript.StdOut.Write WScript.StdIn.ReadLine
+			fComma = True
+        End If
+    Next
+End Sub
+
+ CheckCScript
+ CheckArguments 1
+ strPrompts = GetFile(WScript.Arguments(0))
+ AskUser
+]]>
+  </script>
+</job>

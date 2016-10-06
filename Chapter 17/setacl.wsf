@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<job>
+<!--comment
+Script:setacl.wsf
+example on how to grant network share permissions 
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+ Option Explicit
+Const CHANGE = 1245631   
+Const ACCESS_DENIED = 0 
+Dim objShare, objDescriptor, objACE, retval, aDACL
+ Dim objTrustee, objService
+'get a reference to WMI service on the remote machine Odin
+ Set objService = GetObject( _
+               "winmgmts:{impersonationLevel=impersonate}!\\Odin") 
+'get a reference to the data share on the remote machine Odin
+ Set objShare = _
+     objService.Get("Win32_LogicalShareSecuritySetting.Name='data'")
+
+ 'get the security descriptor and DACL
+ retval = objShare.GetSecurityDescriptor(objDescriptor)
+aDACL = objDescriptor.DACL
+'create a new instance of an ACE and Trustee object
+ Set objACE = objService.Get("Win32_ACE")
+ Set objTrustee = objService.Get("Win32_Trustee") 
+
+ 'set trustee information    
+ objTrustee.Name = "Acme\Freds"
+ 'assign the binary SID value for user account Freds
+ objTrustee.SID = GetBinarySID("Freds")
+
+ objACE.AccessMask = CHANGE
+ objACE.AceType = ACCESS_DENIED
+ objACE.Trustee = objTrustee
+
+ 'resize DACL array and assign to security descriptor    
+ ReDim Preserve aDACL(UBound(aDACL) + 1)
+ Set aDACL(UBound(aDACL)) = objACE
+objDescriptor.dacl = aDACL
+'set the security descriptor
+ retval = objShare.SetSecurityDescriptor(objDescriptor)
+]]>
+ </script>
+</job>

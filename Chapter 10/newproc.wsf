@@ -1,0 +1,26 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:newproc.wsf
+Description:monitors the creation of new processes
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+  Dim objService, objEvent, objEvents
+
+  Set objService = GetObject("winmgmts:{impersonationLevel=impersonate}")
+  'check for the creation of any new programs/processes every 60 seconds
+  Set objEvents = objService.ExecNotificationQuery _ 
+      ("select * from __instancecreationevent within 60 " & _ 
+        "where targetinstance isa 'Win32_Process'") 
+
+ ' Note this next call will wait indefinitely - a timeout can be specified 
+  WScript.Echo "Waiting for process creation..."
+  Do 
+   Set objEvent = objEvents.Nextevent 
+   WScript.Echo objEvent.TargetInstance.ExecutablePath & " started at " & _
+                DMTFDate2String(objEvent.TargetInstance.CreationDate)
+  Loop
+  ]]>
+ </script>
+</job>

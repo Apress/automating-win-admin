@@ -1,0 +1,3 @@
+ProductName,UnitPrice,SupplierId,QuantityPerUnit, Discontinued
+"Swiss Chocolate Bunny",$10.00,22,"Case of 20", 0
+"White Chocolate Bar",$10.00,22,"Case of 20", 0

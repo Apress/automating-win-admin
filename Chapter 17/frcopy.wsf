@@ -1,0 +1,59 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:frcopy.wsf
+Description:copies files with permissions
+-->
+ <script language="VBScript" src="adsilib.vbs">
+ <![CDATA[
+Option Explicit
+Dim objSrcFile, objFSO, strSource
+Dim objSecurity, objSD
+Dim strSrcFolder, strDstFolder, objArgs
+
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+
+Set objArgs = Wscript.Arguments
+ 
+If objArgs.Count = 2 Then
+
+ strSource = objArgs(0) 
+ strDstFolder = objArgs(1) 
+
+ Set objSecurity = CreateObject("ADsSecurity")
+
+ 'get a reference to the file to copy
+ Set objSrcFile = objFSO.GetFile(strSource)
+
+ If Err Then ExitScript "File " & strSource & " not found"
+
+'copy the file to the destination folder
+ objSrcFile.Copy strDstFolder & "\" & objSrcFile.Name
+ If Err Then ExitScript "Unable to copy " & _ 
+          strSource & " to " & strDstFolder
+
+ ' get the security descriptor for the file 
+ Set objSD = _
+       objSecurity.GetSecurityDescriptor("FILE://" & objSrcFile.Path)
+
+ 'copy the security descriptor from the original file to the copied file
+ objSecurity.SetSecurityDescriptor objSD, "FILE://" & _
+       strDstFolder & "\" & objSrcFile.Name
+
+ Wscript.Echo strSource & " copied to " & strDstFolder & "\" & objSrcFile.Name
+Else 
+    WScript.Echo "frcopy.ws copies files together with file righ" _ 
+    & vbLf & "Syntax:" &  vbLf & _
+    "frcopy.wsf file destination" & vbLf & _
+    "file           name of file to copy"  & vbLf & _
+    "destination    destination directory to copy to"
+
+End If
+ 
+ Set objSecurity = Nothing
+ Set objSD = Nothing
+ Set objSrcFile = Nothing
+ Set objArgs = Nothing 
+  ]]>
+  </script>
+</job>

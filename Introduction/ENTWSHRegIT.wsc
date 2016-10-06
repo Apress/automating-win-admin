@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<component>
+<registration
+    description="ENTWSH Register Sample"
+    progid="ENTWSH.RegIT"
+    version="1.00"
+    classid="{a2e51600-6ce5-11d4-bce1-00104b164591}"
+>
+<script language="VBScript">
+<![CDATA[
+Function Register()
+ Set objShell = CreateObject("WScript.Shell") 
+ objShell.RegWrite "HKCU\SOFTWARE\WSHWidget\Path", _
+                   "d:\data\wsh"
+ Set objShell = Nothing 
+ Register = False
+End function
+
+Function unregister()
+ On Error Resume Next
+ Set objShell = CreateObject("WScript.Shell") 
+ objShell.RegDelete  "HKCU\SOFTWARE\WSHWidget\Path"
+ objShell.RegDelete  "HKCU\SOFTWARE\WSHWidget\"
+ Set objShell = Nothing
+
+ End function
+   ]]>
+   </script>
+</registration>
+
+<public>
+	<property name="Color">
+		<get/>
+		<put/>
+	</property>
+</public>
+
+<script language="VBScript">
+<![CDATA[
+dim Color
+
+function get_Color()
+	get_Color = Color
+end function
+
+function put_Color(newValue)
+	Color = newValue
+end function
+
+]]>
+</script>
+
+</component>

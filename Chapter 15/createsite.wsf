@@ -1,0 +1,101 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:createsite.wsf
+Description:creates a new web or FTP site
+-->
+ <script language="VBScript" src="adsilib.vbs">
+ <![CDATA[
+   Const MediumProtection = 2
+   Dim objWebService, objWebSite, objVirtDir, nSiteNum, strSiteType
+   Dim strComputer, strComment, strBinding, strPath, objService, strType
+   On Error Resume Next
+
+   If Not Wscript.Arguments.Count = 5 Then 
+      ShowUsage
+      Wscript.Quit
+   End If
+ 
+    strComputer = Wscript.Arguments(0) 
+    strSiteType = Ucase(Wscript.Arguments(1)) 
+    strType = GetSiteType(strSiteType)
+    strComment = Wscript.Arguments(2) 
+    strBinding = Wscript.Arguments(3) 
+    strPath = Wscript.Arguments(4) 
+
+    'get the service from specified computer
+    Set objService = GetObject("IIS://" & strComputer & "/" & strType)
+
+    If Err Then 
+      ExitScript "Error getting reference to the server:" & strComputer & vbCrLf & _
+                     "Error:" & Err.Description
+     End If
+
+    'get number for new site using FindNextSite from adsilib
+    nSiteNum = FindNextSite(objService)
+
+    'create site with new number
+    Set objWebSite = _
+     objService.Create("IIs" & strSiteType & "Server", nSiteNum) 
+      
+    If Err Then 
+       ExitScript "Error creating " & strSiteType & " site" & nSiteNum &  _
+                     vbCrLf & "Error:" & Err.Description
+     End If
+     
+    'set the server comment and server bindings
+    objWebSite.ServerComment = strComment
+    objWebSite.ServerBindings = Array(strBinding)
+    objWebSite.SetInfo
+
+    If Err Then 
+      ExitScript "Error setting server bindings:" & strBinding & vbCrLf & _
+                   "Error:" & Err.Description
+     End If  
+
+    'create the root folder
+    Set objVirtDir = _ 
+      objWebSite.Create("IIs" & strSiteType & "VirtualDir", "ROOT")
+    objVirtDir.AccessRead = True
+    
+
+    objVirtDir.Path = strPath
+
+    'only create web application if site type is a Web server
+    If strSiteType= "WEB" Then
+     objVirtDir.AccessScript  = True
+     objVirtDir.SetInfo
+     'create web app for root directory
+    'if IIS version is 4 then create Isolated
+    If IISVersion(strComputer) = "4" Then
+      objVirtDir.AppCreate False
+    Else
+      objVirtDir.AppCreate2 MediumProtection 
+    End If
+     objVirtDir.AppFriendlyName = "Default Application"  
+    End If
+     objVirtDir.SetInfo
+  
+     If Err Then 
+        ExitScript "Error creating virtual root on " & strComment & vbCrLf & _
+                     "Error:" & Err.Description
+     End If
+
+    Wscript.Echo "Successfully created site " & strComment
+
+   Sub ShowUsage
+    WScript.Echo "createsite creates new web and FTP sites" & vbCrLf & _ 
+    "Syntax:"  &  vbCrLf & _
+    "createsite.wsf computer type comment binding path" &  vbCrLf & _
+    "computer computer IIS server resides on" & vbCrLf & _ 
+    "type     type of server, either FTP or Web " & vbCrLf & _ 
+    "comment  descriptive name of site" & vbCrLf & _
+    "binding  " & vbCrLf & _
+    "bindings server bindings in address:port:fqdn format" & vbCrLf & _
+    "Example:" & vbCrLf & _
+    "createsite.ws Acme Web ""Accounting Intranet" _
+     & """ 10.0.0.1:80:accounting.acme.com d:\inetpub\wwwroot\acct"
+   End Sub
+   ]]>
+  </script>
+</job>

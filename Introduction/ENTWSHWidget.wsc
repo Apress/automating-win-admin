@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<component>
+
+<registration
+    description="ENTWSH Test Widget Component"
+    progid="ENTWSH.Widget"
+    version="1.00"
+    classid="{35f5fa40-6ace-11d4-bce1-00104b164591}"
+	remotable="true"
+>
+</registration>
+
+<public>
+	<property name="Color">
+		<get/>
+		<put/>
+	</property>
+	<property name="Age" internalName = "nAge"/>	
+    <method name="Search">
+    </method>
+    <event name="FoundFile">
+      <parameter name="filepath"/>
+     </event>
+</public>
+
+<script language="VBScript">
+<![CDATA[
+
+dim Color
+dim nAge
+
+function get_Color()
+	get_Color = Color
+end function
+
+function put_Color(newValue)
+	Color = newValue
+     
+end function
+
+Function Search()
+  fireEvent "FoundFile", "heh"
+End Function
+
+]]>
+</script>
+</component>
+
+

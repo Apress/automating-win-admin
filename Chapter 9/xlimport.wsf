@@ -1,0 +1,107 @@
+<?xml version="1.0" ?>
+<job>
+<reference guid="{00020813-0000-0000-C000-000000000046}"/> 
+<!--comment
+Script:xlimport.wsf
+inserts text from delimited input streams
+-->
+ <script language="VBScript">
+ <![CDATA[
+ Option Explicit
+Dim nF, objFSO, strLine
+ Dim objExcel, nRcount, nCcount, nRowStart, nColStart
+ Dim bAdd, strRange, strFile, objWorkBook, strPath
+ Dim aVals
+On Error Resume Next
+If Wscript.Arguments.Count <> 2 Then 
+   ShowUsage
+ End If
+
+  strPath = Wscript.Arguments(0)
+  strRange = Wscript.Arguments(1)
+  'attempt to get reference to running copy of Excel
+  Set objExcel = GetObject(,"Excel.Application")
+  'if no running copies of Excel, start a new one  
+  If Err Then Set objExcel = CreateObject("Excel.Application") 
+  With objExcel  
+    .Visible = True
+    'check if specified workbook is already loaded
+    Set objWorkbook= .Workbooks(Mid(strPath, InstrRev(strPath,"\")+1))
+    'if not, then load workbook
+    If Err Then
+     Err.Clear
+      Set objWorkBook =  .Workbooks.Open(strPath)
+    End If  
+     
+    If Err Then
+      ExitScript _
+         "Unable to open file " & strPath & vbCrLf & _
+         "Error: " & Err.Description , True 
+    End If
+    objWorkBook.Activate
+   .Goto strRange
+
+   'did range name not exist? 
+   If Err Then
+    'move to 'last cell' of spread sheet
+    .ActiveCell.SpecialCells(xlLastCell).Select
+    'select range at end of spreadsheet 
+    .Range(.Cells(.ActiveCell.Row + 1, 1), _ 
+               .Cells(.ActiveCell.Row + 1, 1)).Select
+    'add range name 
+    .ActiveWorkbook.Names.Add strRange, "=" & .ActiveSheet.Name _
+                          & "!" & .Application.Selection.Address
+     nRcount = 0 'set row count to nothing
+
+   Else
+     nRcount = .Selection.Rows.Count  
+  End If
+  'get the dimensions of the range
+   nCcount = .Selection.Columns.Count
+   nRowStart = .Selection.Row
+   nColStart = .Selection.Column
+
+
+  'loop through all lines in the input stream
+    Do While Not Wscript.StdIn.AtEndOfStream
+    'insert a blank row below the range if adding to range
+     If nRcount>0 Then
+      .Range(.Cells(nRowStart + nRcount, nColStart), _
+                          .Cells(nRowStart + nRcount, _ 
+                          nColStart + nCcount - 1)).Insert xlDown
+     'move to the bottom of the data range to insert new data
+     .Range(.Cells(nRowStart + nRcount, nColStart), _
+                   .Cells(nRowStart + nRcount,  nColStart)).Select
+    End If      
+    'read data from input stream and parse into array
+    strLine = Wscript.StdIn.ReadLine
+
+     aVals = Split(strLine, ",")
+    'insert values into spreadsheet
+     For nF = 0 To Ubound(aVals)
+      .Activecell.Value =aVals(nF)
+      .Activecell.Offset (0,1).Select   
+      Next
+     If Ubound(aVals)>= nCcount Then nCcount = Ubound(aVals) + 1
+    nRcount = nRcount + 1
+   Loop
+   'resize the range name for the range
+   .Range(strRange).Resize (nRcount,nCcount).Select
+   .ActiveWorkbook.Names.Add strRange, "=" & .ActiveSheet.Name _
+                           & "!" & .Application.Selection.Address
+  End With
+
+Sub ShowUsage()     
+WScript.Echo _
+   "xlimport.wsf imports data into Excel from comma delimited input stream." _ 
+    & vbCrLf & "Syntax:" &  vbCrLf & _
+   "xlimport.wsf FilePath RangeName" &  vbCrLf & _
+   "FilePath   path to Excel file to update" &  vbCrLf & _
+   "RangeName  Excel range to add data to" & vbCrLf & _
+   "Example:Import data from file data.txt into range dat2 in file book.xls" _
+    & vbCrLf & "cscript xlimport.wsf e:\book.xls dat2 < data.txt"
+   WScript.Quit -1
+ End Sub
+  ]]>
+  </script>
+</job>

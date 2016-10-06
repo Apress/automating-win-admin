@@ -1,0 +1,28 @@
+rem nuser.txt
+rem create user
+net user </1/> /ADD
+
+rem create a user directory [
+md d:\users\</1/>
+
+rem Create the share
+net share </1/>$=d:\users\</1/>
+
+rem Grant </1/> and Domain Admins full access to the share 
+rem shrperm is part of Backoffice resource kit
+shrperm \\Odin\</1/>$ </1/>:F "Domain Admins":F
+
+rem Grant user </1/> full access to his or her directory 
+cacls d:\users\</1/> /T /E /G </1/>:F
+
+rem remove Everyone access from directory
+cacls d:\users\</1/> /T /E /R Everyone
+
+rem Permit Domain Admins to have full access in directory.
+cacls d:\users\</1/> /T /E /P "Domain admins":F
+
+rem set the home directory setting for user </1/>
+
+net user </1/> /HOMEDIR:\\Odin\</1/>$
+net user </1/> /FULLNAME:"</2/>"
+net user </1/> /COMMENT:"</3/>"

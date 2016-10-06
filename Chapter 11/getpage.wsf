@@ -1,0 +1,47 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:getpage.wsf
+Description:creates local copy of web page. Downloads
+all images if required.
+-->
+ <script language="VBScript" src="getimage.vbs">
+ <![CDATA[
+  Const ForWriting = 2
+  Dim objIE, objImg, strSrc, strDest, strResult
+
+  'create an instance of the IE browser
+  Set objIE = CreateObject("InternetExplorer.Application")
+  strDstPath = "e:\Data\LocalCopy\" 
+  
+  'go to the page
+  objIE.Navigate "http://www.microsoft.com/windows/default.asp" 
+  'wait to load page
+  While objIE.Busy: Wend
+  'loop through all elements in the HTML document
+  For Each objImg In objIE.Document.images
+    'get the source URL for the image
+    strSrc = objImg.src
+    'build a local path for the image
+    strDest = strDstPath & Mid(strSrc, InStrRev(strSrc, "/") + 1)
+    'get the image
+     On Error Resume Next
+    strResult = GetImage(strSrc, strDest)
+
+    'modify the path of the image to point to the local image    
+    objImg.src = strDest
+
+    If strResult <> "OK" Then 
+      WScript.Echo "Error:'" & strResult & "' retrieving image " & _
+                   strSrc
+     End If
+  Next
+  'write the modified page to a local file
+  Set objFSO = CreateObject("Scripting.FileSystemObject")
+  Set objFile = objFSO.OpenTextFile(strDstPath & "page.htm", _
+                 ForWriting, True)
+  objFile.Write objIE.Document.documentelement.innerhtml
+  objFile.Close
+  ]]>
+  </script>
+</job>

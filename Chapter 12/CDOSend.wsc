@@ -1,0 +1,124 @@
+<?xml version="1.0"?>
+<component>
+<registration
+    description="CDO.Send"
+    progid="CDO.Send"
+    version="1.00"
+    classid="{1e99aa40-19ad-11d3-bbec-00104b164591}"
+>
+</registration>
+<public>
+    <property name="Profile"><put/>
+    </property>
+    <property name="Subject"><put/>
+    </property>
+    <property name="Message"><put/>
+    </property>
+    <property name="Session"><get/>
+    </property>
+    <method name="Send"></method>
+    <method name="NewMessage"></method>
+    <method name="AddRecipient">
+        <PARAMETER name="Address"/>
+    </method>
+    <method name="LogOn"></method>
+    <method name="LogOff"></method>
+</public>
+
+<script language="VBScript">
+<![CDATA[
+
+Dim objOneRecip,objSession,objMessage
+Dim Profile, ErrorString
+
+Function put_Profile(newValue)
+    Profile = newValue
+End Function
+
+Function put_Subject(newValue)
+    objMessage.Subject = newValue
+End Function
+
+Function put_Message(newValue)
+    objMessage.Text = newValue
+End Function
+
+Function get_Error()
+    get_Error = ErrorString
+End Function
+
+Function get_Session()
+    get_Session = objSession
+End Function
+
+Function Send()
+    ' sEnd the message 
+    objMessage.SEnd 
+End Function
+
+Function NewMessage()
+    On Error Resume Next
+    ' create a message and fill in its properties
+    Set objMessage = objSession.Outbox.Messages.Add
+
+    If Err Then 
+        ErrorString = CreateErrMsg (Err, _
+            "Error occured attempting to create new message")
+        NewMessage = False
+        Exit Function
+    Else
+        NewMessage = True
+    End If
+End Function
+
+Function AddRecipient(Address)
+    ' create the recipient
+    On Error Resume Next
+    Set objOneRecip = objMessage.Recipients.Add
+    objOneRecip.Address = Address
+    objOneRecip.Resolve
+   
+    If Err Then 
+        ErrorString = CreateErrMsg (Err, _
+            "Error occured after adding recipient" & Address)
+        AddRecipient = False
+        Exit Function
+    Else
+        AddRecipient = True
+    End If
+End Function
+
+Function LogOn()    
+
+    On Error Resume Next
+    'check if MAPI session exists.
+    If Not IsObject(objSession) Then
+        Set objSession = CreateObject("MAPI.Session")
+    End If
+
+    ' logon using a valid profile    
+    objSession.Logon Profile
+    If Err Then 
+        ErrorString = CreateErrMsg (Err, _
+        "Error occured attempting to log on with profile:" & Profile)
+        LogOn = False
+        Exit Function
+    Else
+        LogOn = True
+    End If
+End Function
+
+Function LogOff()
+    objSession.Logoff
+    Set objSession = Nothing 
+End Function
+
+Function  CreateErrMsg(objErr,sMsg)
+Dim sTemp
+ sTemp = "Error# [" & Err & "] " & Err.Description 
+ If Not sMsg = "" Then sTemp = sTemp & vbCrLf & sMsg
+ CreateErrMsg = sTemp
+End Function
+]]>
+</script>
+</component>

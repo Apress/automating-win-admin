@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<component>
+<registration
+    description="ENTWSH List Files"
+    progid="ENTWSH.ListFiles"
+    version="1.00"
+    classid="{997c9d40-6d12-11d4-bce1-00104b164591}"
+>
+</registration>
+<public>
+    <property name="Path">
+        <put/>
+    </property>
+    <method name="Search">
+    </method>
+    <event name="FoundFile">
+      <parameter name="filepath"/>
+     </event>
+</public>
+<script language="VBScript">
+<![CDATA[
+Dim Path
+Function put_Path(newValue)
+    Path = newValue
+End Function
+
+Function Search()
+ Set objFSO = CreateObject("Scripting.FileSystemObject")
+ Set objFolder = objFSO.GetFolder(Path)
+ Set objFiles = objFolder.Files
+ 'fire FoundFile event for each file found
+ For Each objFile In objFiles
+  fireEvent "FoundFile", objFile.Path
+ Next
+ Set objFSO = Nothing
+End Function
+]]>
+</script>
+</component>

@@ -1,0 +1,46 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:checkbadevents.wsf
+lists all warning, audit failures and errors events for the last 24 hours
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+Dim objService, objWMI, nTimeZone, objWMISet, objEvent, objOut
+
+If WScript.Arguments.Count = 0 Then
+  WScript.Echo "You must specify a computer"
+  WScript.Quit
+End If
+
+strComputer = Wscript.Arguments(0)
+'bind to the WMI service, note the Security privelige is specified, this
+'is require to access the Security log
+Set objService = GetObject("winmgmts:{impersonationLevel=impersonate," _
+                           & "(Security)}!\\" & strComputer)
+
+'get time zone
+Set objWMI = objService.Get("Win32_ComputerSystem='" & strComputer & "'")
+
+nTimeZone = objWMI.Currenttimezone
+'only retrieve entries within the last two days
+ Set objWMISet = objService.ExecQuery("SELECT Message, " & _
+   "TimeWritten, User,Type, SourceName FROM Win32_NTLogEvent WHERE " & _
+   " (Type='audit failure' Or Type='error' Or Type='warning' ) And " & _
+   "TimeWritten> '" & Convert2DMTFDate(DateAdd("h", -24, Now), nTimeZone) & "'")
+
+ 
+ 'loop through each event 
+ For Each objEvent In objWMISet
+     Wscript.Stdout.WriteLine "Time: " & DMTFDate2String(objEvent.TimeWritten)
+     Wscript.Stdout.WriteLine "Source: " & objEvent.SourceName & " User: " & _ 
+                                   objEvent.User & " Type:" & objEvent.Type
+
+     If Not IsNull(objEvent.Message) Then _
+      Wscript.Stdout.WriteLine _
+	                 Replace(objEvent.Message,chr(13) & chr(10), chr(13))
+     Wscript.Stdout.WriteLine
+ Next
+ ]]>
+ </script>
+</job>

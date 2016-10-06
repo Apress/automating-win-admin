@@ -1,0 +1,38 @@
+<job>
+<runtime>
+<description>
+The hidefile.wsf filename script sets the hidden attribute
+for a specified file
+</description>
+<named 
+      name="FileName"
+      helpstring="Name of file to hide."
+      type="string"
+      required="True"
+/>
+<example>
+This is an example of how to use this script:
+ Hidefile.wsf Filename:data.doc
+</example>
+</runtime>
+<script language="VBScript">
+If Not WScript.Arguments.Named.Exists("FileName") Then
+  WScript.Arguments.ShowUsage
+  WScript.Quit
+ End If
+
+Set objFileSystem = CreateObject("Scripting.FileSystemObject")
+ On Error Resume Next
+ 'get the file specified in command line 
+
+ strFile = WScript.Arguments.Named("FileName")
+ Set objFile = objFileSystem.GetFile(strFile)
+ 'check if error occured - file not found
+ If Err Then 
+     WScript.Echo "File:'" & strFile & "' not found"
+ Else
+     objFile.Attributes = 2
+ End If
+ 
+</script>
+</job>

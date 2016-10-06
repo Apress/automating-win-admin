@@ -1,0 +1,19 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:delfolder.wsf
+-->
+ <script language="VBScript" src="maillib.vbs">
+ <![CDATA[
+  Dim objSession, objFolder
+  Set objSession = CreateObject("MAPI.Session")
+  ' supply a valid profile
+  objSession.Logon "Valid Profile"
+
+  'get a reference to the folder to be deleted and delete it
+  Set objFolder = GetFolderObj(objSession, "Personal Mail\Backup")
+  objFolder.Delete
+  objSession.Logoff
+  ]]>
+  </script>
+</job>

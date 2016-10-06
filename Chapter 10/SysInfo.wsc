@@ -1,0 +1,99 @@
+<?xml version="1.0"?>
+<component>
+
+<registration
+    description="SysInfo"
+    progid="ENTWSH.SysInfo"
+    version="1.00"
+    classid="{91e4c710-9a6c-11d3-bc4a-00104b164591}"
+>
+</registration>
+
+<public>
+    <property name="BIOSVersion">
+        <get/>
+    </property>
+    <property name="CPU">
+        <get/>
+    </property>
+    <property name="Memory">
+        <get/>
+    </property>
+    <property name="OS">
+        <get/>
+    </property>
+    <property name="RegisteredUser">
+        <get/>
+    </property>
+    <property name="SerialNumber">
+        <get/>
+    </property>
+    <property name="VirtualMemory">
+        <get/>
+    </property>
+</public>
+<script language="VBScript" src="sysinfo.vbs"></script>
+<script language="VBScript">
+<![CDATA[
+
+Dim BIOSVersion,CPU, Memory, OS, RegisteredUser, SerialNumber
+Dim VirtualMemory
+Dim objSysInfo
+
+'create a new instance of the SysInfo class
+Set objSysInfo = New SysInfo
+
+'return BIOS version
+Function get_BIOSVersion()
+    get_BIOSVersion = objSysInfo.BIOSObject.Version
+End Function
+
+'return CPU information
+Function get_CPU()
+    get_CPU = objSysInfo.ProcessorObject.CurrentClockSpeed & "Mhz " & _ 
+            objSysInfo.ProcessorObject.Name & _
+            ", " & objSysInfo.ProcessorObject.Description
+End Function
+
+'return total physical memory
+Function get_Memory()
+    get_Memory = objSysInfo.MemoryObject.TotalPhysicalMemory
+End Function
+
+'return OS information
+Function get_OS()
+     Dim strOS
+    
+ strOS = objSysInfo.OSObject.Caption & ", Ver:" & _ 
+         objSysInfo.OSObject.Version
+
+  If Not IsNull(objSysInfo.OSObject.BuildNumber) Then _ 
+         strOS = strOS & ", Build:" & objSysInfo.OSObject.BuildNumber
+  If Not IsNull(objSysInfo.OSObject.BuildType) Then strOS = _
+          strOS & ", Build Type:" & objSysInfo.OSObject.BuildType
+  If Not IsNull(objSysInfo.OSObject.CSDVersion) Then strOS =_
+         strOS & ", SP:" & objSysInfo.OSObject.CSDVersion
+
+  get_OS = strOS
+
+End Function
+
+'return who software is registered to
+Function get_RegisteredUser()
+    get_RegisteredUser = objSysInfo.OSObject.RegisteredUser
+End Function
+
+'return OS serial #
+Function get_SerialNumber()
+    get_SerialNumber = objSysInfo.OSObject.SerialNumber
+End Function
+
+'return virtual memory
+Function get_VirtualMemory()
+    get_VirtualMemory = objSysInfo.MemoryObject.TotalVirtualMemory
+End Function
+
+]]>
+</script>
+
+</component>

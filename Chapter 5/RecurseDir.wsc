@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<component>
+<registration
+  description="RecurseDir"
+  progid="ENTWSH.RecurseDir"
+  version="1.00"
+classid="{4402a970-43d3-11d3-bbf7-00104b164591}"
+>
+</registration>
+ <public>
+  <property name="Path"><put/>
+ </property>
+  <property name="Filter"><put/>
+ </property>
+  <method name="Process"></method>
+ <event name="FoundFile">
+  <parameter name="filepath"/>
+ </event>
+
+</public>
+
+<script language="VBScript">
+<![CDATA[
+
+Dim objFSO, objRegExp, Filter, Path
+
+Function put_Path(newValue)
+  Path = newValue
+End Function
+
+Function put_Filter(newValue)
+  Filter = newValue
+End Function
+
+Function Process()
+Dim objFolder
+
+ Set objFSO = CreateObject("Scripting.FileSystemObject")
+ Set objRegExp = New RegExp 
+
+ objRegExp.Pattern = Filter  
+ objRegExp.IgnoreCase = True  
+ Set objFolder = objFSO.GetFolder(Path) 
+RecurseDirs objFolder
+
+Set objFSO = Nothing
+Set objRegExp = Nothing End Function
+
+'recurse through specified folder
+Sub RecurseDirs(objFolder)
+
+Dim objFile, objSub
+ 'go through each file in folder and compare filename against 
+ 'regular expression pattern
+ For Each objFile In objFolder.Files
+     If objRegExp.Test(objFile.Name) Then
+      fireEvent "FoundFile", objFile.Path
+     End If
+Next
+
+  For Each objSub In objFolder.SubFolders
+   RecurseDirs objSub
+  Next
+End Sub
+]]>
+</script>
+</component>

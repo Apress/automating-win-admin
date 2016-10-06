@@ -1,0 +1,7 @@
+'get a reference to the Exchange Internet Mail Connector service
+Set objService = GetObject("WinNT://odin/MSExchangeIMC")
+objService.Stop
+'wait until the service has completely stopped
+While Not objService.Status = ADS_SERVICE_STOPPED
+ Wscript.Sleep 100
+Wend

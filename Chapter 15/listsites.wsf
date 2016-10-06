@@ -1,0 +1,54 @@
+<?xml version="1.0" ?>
+<job>
+<!--
+listsites.wsf
+lists sites for specified service
+-->
+ <script language="VBScript" src="adsilib.vbs">
+ <![CDATA[
+  Option Explicit
+  'check the argument count
+   If Not Wscript.Arguments.Count = 2 Then 
+    ShowUsage
+    Wscript.Quit 
+   End If 
+
+    ListIIS Wscript.Arguments(0), Wscript.Arguments(1) 
+
+   Sub ShowUsage
+     WScript.Echo "listsites lists sites for specific service " & vbCrLf & _ 
+    "Syntax:"  &  vbCrLf & _
+    "listsites.wsf computer type" &  vbCrLf & _
+    "computer computer IIS server resides on" & vbCrLf & _ 
+    "type     site type - either web,FTP, SMTP or NNTP" & vbCrLf & _
+    "Example: List all web sites" & vbCrLf & _
+    "listsites.wsf Acme web" 
+   End Sub
+
+   'lists sites
+   'Parameters
+   'strComputer IIS server Computer name
+   'strType     site type, web or FTP
+    Sub ListIIS(strComputer, strType) 
+
+    Dim objService, objItem, strSvc
+
+    strSvc = GetSiteType(strType)
+
+    'get the web service from specified computer
+    Set objService = GetObject("IIS://" & strComputer & "/" & strSvc )
+
+   'loop through each site, find available site name
+    For Each objItem In objService
+    'check if object is a site
+
+    If StrComp(objItem.Class, "IIs" & strType & "Server", vbTextCompare) = 0 Then
+     'output site name and comment
+     Wscript.Echo objItem.Name & "," & objItem.Servercomment
+     End If
+    Next
+   End Sub
+    ]]>
+  </script>
+</job>
+

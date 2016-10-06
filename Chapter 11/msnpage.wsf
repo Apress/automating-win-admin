@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:msnpage.wsf
+page a user using MSN Messenger
+-->
+ <script language="VBScript" src="msnlib.vbs">
+<![CDATA[
+  Dim objMessenger, objUser
+
+Set objMsg = StartMessenger("freds@hotmail.com", "sderf!@#")
+
+  WScript.ConnectObject objMessenger, "msn_"
+
+  'get a user to send a message to 
+  Set objUser = objMessenger.CreateUser("joeb@hotmail.com", objMessenger.Services.PrimaryService)  
+
+  'send a message
+  nCookie = objMessenger.SendPage(objUser, "Server is down", -1)
+  ]]>
+  </script>
+</job>

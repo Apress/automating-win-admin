@@ -1,0 +1,43 @@
+<?xml version="1.0" ?>
+<job>
+<reference object="ADODB.Recordset"/> 
+<!--comment
+Script:retparamvals.wsf
+returns parameter values from
+-->
+ <script language="VBScript">
+ <![CDATA[
+  Option Explicit
+  Dim objCmd, objConn, objRst
+  Set objCmd = CreateObject("ADODB.Command")
+  Set objConn = CreateObject("ADODB.Connection")
+' open the pubs data source 
+ objConn.Open _
+  "Provider=SQLOLEDB.1;User ID=fred;Initial Catalog=pubs;Data Source=Odin"
+    Set objCmd.ActiveConnection = objConn
+    'set the stored procedure name
+    objCmd.CommandText = "AddNewStore" 
+     'add parameters
+    objCmd.Parameters.Append objCmd.CreateParameter("@StoreName", _
+     adVarChar, , 40, "Store")
+ 
+    objCmd.Parameters.Append objCmd.CreateParameter("@Address", _
+     adVarChar, , 40, "Address")
+ 
+    objCmd.Parameters.Append objCmd.CreateParameter("@City", _
+     adVarChar, , 20, "City")
+ 
+   ' add the @StoreID parameter as output.
+     objCmd.Parameters.Append objCmd.CreateParameter("@StoreID", _
+     adInteger, adParamOutput)
+ 
+   'execute the stored procedure
+   objCmd.Execute , , adCmdStoredProc
+ 
+   ' get the new store ID
+   StoreID = objCmd.Parameters("@StoreID")
+ 
+   objConn.Close
+   ]]>
+  </script>
+</job>

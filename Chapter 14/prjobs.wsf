@@ -1,0 +1,52 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:prjobs.wsf
+Description:lists print jobs for specified print queue
+-->
+ <script language="VBScript" src="adsilib.vbs">
+ <![CDATA[
+  Dim objPrintQ, strComputer, strPrinter
+
+  On Error Resume Next
+  If Not Wscript.Arguments.Count = 2 Then
+    ShowUsage
+    Wscript.Quit
+  End If
+   strComputer = Wscript.Arguments(0) 
+   strPrinter = Wscript.Arguments(1) 
+   Set objPrintQ = GetObject("WinNT://" & strComputer & "/" & strPrinter)
+   If Err Then _
+     ExitScript "Error getting reference to printer : " & strPrinter
+   
+   For Each objPrintJob In objPrintQ.PrintJobs
+    Wscript.Echo objPrintJob.Name & " " & objPrintJob.Description _
+       & " " & Status(objPrintJob.Status) & " Pages " & _
+      objPrintJob.TotalPages
+   Next
+
+  Sub ShowUsage
+WScript.Echo "prjobs lists print jobs for specified queue" & vbLf & _ 
+    "Syntax:" &  vbLf & _
+    "prjobs.wsf computer printer " &  vbLf & _
+    "computer computer printer is shared on" & vbLf & _ 
+    "printer  name of printer" 
+  End Sub
+  
+  'returns a string 
+  'Parameter:
+  'lFlag    long printer status value
+  'Returns string representing print job status
+  Function Status(lFlag)
+    Dim sStat
+    If lFlag And 1 Then sStat = sStat & "Paused "
+    If lFlag And 2 Then    sStat = sStat & "Error "
+    If lFlag And 4 Then    sStat = sStat & "Deleting "
+    If lFlag And 16 Then sStat = sStat & "Printing "
+    If lFlag And 32 Then sStat = sStat & "Offline "
+    If lFlag And 64 Then sStat = sStat & "Paper out "
+Status = sStat
+  End Function
+   ]]>
+  </script>
+</job>

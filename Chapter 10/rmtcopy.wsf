@@ -1,0 +1,61 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:rmtcopy.wsf
+Description:
+Copies file on remote computer
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+ Dim strComputer, strSource, strDest, avar
+ Dim objFile, nResult
+ On Error Resume Next
+ 'check if script is being run from command prompt
+ If Not IsCscript Then 
+  ExitScript _
+      "This script must be run from command line using cscript.exe",False
+ End If 
+
+ 'check the argument count
+ If Wscript.Arguments.Count <> 3 Then 
+    ShowUsage
+	WScript.Quit
+ End If
+  
+  'get comptuer and source and destination file
+  strComputer = Wscript.Arguments(0)
+  strSource = Wscript.Arguments(1)
+  strDest = Wscript.Arguments(2)  
+  
+  'get a reference to the file to copy
+  Set objFile = GetObject("winmgmts:{impersonationLevel=impersonate}!" & _
+                "\\" & strComputer & "\root\cimv2:CIM_DataFile.Name='" & _
+                Replace(strSource,"\","\\") & "'")
+
+  If Err Then  ExitScript _
+              "Unable to get reference to file " & strSource & _ 
+            " on computer:" & strMachine, False
+ 
+  'create process on remote machine
+  nResult = objFile.Copy(strDest)
+
+If IsEmpty(nResult) Then nResult = 0
+  If nResult = 0 And Not Err Then
+   WScript.Echo "File " & strSource & _ 
+                    " successfully copied to: "  & strDest
+  Else
+   WScript.Echo "Unable to copy file " & strSource & _
+                    " to " & strDest
+  End If
+
+Sub ShowUsage   
+  WScript.Echo "rmtcopy copies files on remote computers" & vbCrLf & _
+  "Syntax:"  &  vbCrLf & _
+  "rmtcopy.wsf computer source destination" & vbCrLf & _
+  "computer    name of computer where source file is located" & vbCrLf & _ 
+  "source      file to copy" & vbCrLf & _ 
+  "destination destination file to copy to"
+End Sub
+]]>
+ </script>
+</job>

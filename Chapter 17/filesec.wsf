@@ -1,0 +1,57 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:filesec.wsf
+Description:
+Sets security permissions on a file
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+ Option Explicit
+ Const RIGHT_GENERIC_READ = 1179785
+ Const RIGHT_GENERIC_EXECUTE = 1179808
+ Const ACETYPE_ACCESS_ALLOWED = 0
+
+ Dim objDescriptor, objACE, retval, objServices
+ Dim objFileSec, objTrustee, aDACL
+
+ Set objServices = GetObject("winmgmts:{impersonationLevel=impersonate}")
+
+ Set objFileSec = _
+     objServices.Get("Win32_LogicalFileSecuritySetting.Path='d:\data\report.doc'")
+
+ 'create a new instance of an ACE and Trustee object
+ Set objACE = objServices.Get("Win32_ACE")
+ Set objTrustee = objServices.Get("Win32_Trustee")
+ Set objDescriptor = objServices.Get("Win32_SecurityDescriptor")
+
+ 'get the security descriptor and DACL
+ retval = objFileSec.GetSecurityDescriptor(objDescriptor)
+ aDACL = objDescriptor.dacl
+
+ 'set trustee information
+ objTrustee.Name = "Acme\Freds"
+ 'assign the binary SID value for user account Freds
+ objTrustee.sid = GetBinarySID("Freds")
+
+ objACE.AccessMask = RIGHT_GENERIC_READ Or RIGHT_GENERIC_EXECUTE
+ objACE.AceType = 0
+ objACE.Trustee = objTrustee
+
+ 'resize DACL array and assign to security descriptor
+ ReDim Preserve aDACL(UBound(aDACL) + 1)
+ Set aDACL(UBound(aDACL)) = objACE
+
+ objDescriptor.dacl = aDACL
+ 
+'set the security descriptor
+ retval = objFileSec.SetSecurityDescriptor(objDescriptor)
+
+ Set objFileSec = Nothing
+ Set objDescriptor = Nothing
+ Set objACE = Nothing
+ Set objTrustee = Nothing
+ Set objServices = Nothing
+ ]]>
+ </script>
+</job>

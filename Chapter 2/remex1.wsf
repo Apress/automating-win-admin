@@ -1,0 +1,20 @@
+<job>
+<script language="VBScript">
+'remex1.wsf
+Const WshFailed = 2
+Set objController = CreateObject("WshController")
+
+'create an instance of the remote object for script inv.vbs
+'to execute on computer odin
+Set objRemote = _
+   objController.CreateScript("e:\wsh\chpt1\inv.vbs", "odin")
+'execute the remote script
+objRemote.Execute
+
+'loop while the remote script is running
+Do While Not objRemote.Status =  WshFailed 
+    WScript.Sleep 100
+Loop
+WScript.Echo "remote script finished execution"
+</script>
+</job>

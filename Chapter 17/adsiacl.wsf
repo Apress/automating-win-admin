@@ -1,0 +1,50 @@
+<?xml version="1.0" ?>
+<job>
+<reference guid="{97D25DB0-0363-11CF-ABC4-02608C9E7553}"/> 
+<!--comment
+Script:adsiacl.wsf
+-->
+ <script language="VBScript">
+ <![CDATA[
+  Option Explicit
+
+  Const FULL_ACCESS = 983551
+  Dim objSecurity 
+  Dim objContainer, objDACL , objACE 
+
+  Set objACE = CreateObject("AccessControlEntry")
+
+  'get a reference to users container
+  Set objContainer = GetObject("LDAP://cn=users,dc=c3i,dc=com")
+
+  'get security descriptor for container
+  Set objSecurity = objContainer.Get("ntSecurityDescriptor")
+
+ 'get the discretionary ACL
+  Set objDACL = objSecurity.DiscretionaryAcl
+
+  'set ACE properties
+  objACE.Trustee = "C3I\Hanzf" 'trustee account
+  'allow access to access type
+  objACE.AceType = ADS_ACETYPE_ACCESS_ALLOWED_OBJECT
+  'specify to look at ObjectType field for GUID
+  objACE.Flags = ADS_FLAG_OBJECT_TYPE_PRESENT
+  'Set permissions to create and delete user objects
+  objACE.AccessMask = ADS_RIGHT_DS_CREATE_CHILD + _
+                      ADS_RIGHT_DS_DELETE_CHILD
+
+  objACE.ObjectType =  "{BF967ABA-0DE6-11D0-A285-00AA003049E2}"
+
+  objDACL.AddAce objACE
+
+  'update the security object's discretionary ACL
+  objSecurity.DiscretionaryAcl = objDACL
+ 
+  'write security descriptor back to container
+  objContainer.Put "ntSecurityDescriptor", objSecurity
+  objContainer.SetInfo
+  Set objContainer = Nothing
+
+ ]]>
+  </script>
+</job>

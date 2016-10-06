@@ -1,0 +1,65 @@
+<?xml version="1.0" ?>
+<job>
+<reference guid="{00020905-0000-0000-C000-000000000046}"/>
+<!--comment
+Script:bword.wsf
+builds Word document from text file
+Includes regarr.vbs, which is the ExtractCSV function defined in Ssolution 8.2
+-->
+ <script language="VBScript" src="regarr.vbs">
+ <![CDATA[
+ Option Explicit
+ Dim nF, nI, objWord
+ Dim objFSO, objTxtStrm, strLine
+ Dim aVar, strLast
+ 'create a FSO object and open data file
+ Set objFSO = CreateObject("Scripting.FileSystemObject")
+ Set objTxtStrm = objFSO.OpenTextFile("e:\code download\chapter 9\cars.txt")
+ On Error Resume Next
+ 'attempt to get an existing running copy of Word
+ Set objWord = GetObject(, "Word.Application")
+ 'if error occurred, then couldn't find Word, create new instance
+ If Err Then
+    Err.Clear
+    Set objWord = CreateObject("Word.Application")
+ End If
+ objWord.Visible = True
+ On Error GoTo 0
+   With objWord
+ 'create a new document based on the carlist template  
+ .Documents.add("carlist.dot")
+ 'move to the beginning of the table using a bookmark
+ .Selection.Goto wdGoToBookmark, , , "TableStart"
+ strLast = ""
+  'loop through each line in the source document
+  Do While Not objTxtStrm.AtEndOfStream
+    'read line and extract values into an array
+   strLine = objTxtStrm.ReadLine
+   aVar = ExtractCSV(strLine)
+   Wscript.Echo strLine
+    'if new car maker then make heading in table
+    If strLast <> aVar(0) Then
+     .Selection.SelectRow
+     .Selection.Cells.Merge
+     .Selection.Style = "CarTitle"
+     .Selection.TypeText aVar(0)
+     .Selection.MoveRight wdCell
+     .Selection.Style = "Normal"
+     .Selection.Cells.Split 1, 3, False
+     strLast = aVar(0)
+    End If
+ 
+   'build row of data
+   .Selection.TypeText aVar(1)
+   .Selection.MoveRight wdCell
+   .Selection.TypeText aVar(2)
+   .Selection.MoveRight wdCell
+   .Selection.TypeText aVar(3)
+   .Selection.MoveRight wdCell
+  Loop
+ .Selection.SelectRow
+ .Selection.Rows.Delete
+ End With
+  ]]>
+  </script>
+</job>

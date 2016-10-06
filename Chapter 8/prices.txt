@@ -1,0 +1,5 @@
+Bakery Price List Page 1
+White bread         $1.20
+Brown bread         $1.25 
+Whole wheat         $1.30 
+Buns                 0.30ea

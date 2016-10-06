@@ -1,0 +1,191 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:wmiexec.wsf
+Description:executes WMI query and sends output to StdOut
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+  Const wbemFlagReturnImmediately  =16 
+  Const wbemFlagForwardOnly = 32
+
+ Dim objWMI, objService, objWBEMObject, objWBEMObjects, nF 
+ Dim objProp, bFirst, st, strProv, objTextStream
+ Dim strLine, strHeader, strDelim, strQry, bShowFields
+ Dim strUser, strPassword, strComputer, strNameSpace, strStringChar
+
+ bShowFields = False
+ bFirst = False
+ strStringChar = chr(34)
+
+
+ If Not IsCscript Then 
+  ExitScript "This script must be run from command line using cscript.exe", True
+  WScript.Quit
+ End If 
+
+ 'check the argument count
+ If WScript.Arguments.Count = 0 Then 
+    ShowUsage 
+    
+ End If 
+
+  strQry = WScript.Arguments(0)
+  strDelim = ","
+
+  GetArguments
+  Set objWMI = New WMISupport
+  
+  objWMI.Computer = strComputer
+  objWMI.UserName = strUser
+  objWMI.Password = strPassword
+  objWMI.NameSpace = strNameSpace
+
+  Set objService = objWMI.Connect()
+  If IsNull(objService) Then ExitScript objService.ErrorMessage, True
+  strQry = ExpandStr(strQry)
+  Set objWBEMObjects = objService.ExecQuery( _
+       strQry ,,wbemFlagReturnImmediately + wbemFlagForwardOnly)
+
+   strHeader = ""
+   For Each objWBEMObject In objWBEMObjects
+
+    If Not bFirst And bShowFields Then
+        For Each objProp In objWBEMObject.Properties_
+            strHeader = strHeader & objProp.Name & strDelim
+        Next
+        WScript.StdOut.WriteLine Left(strHeader, Len(strHeader)-1)
+        bFirst = True
+     End If
+    
+    strLine = ""
+    
+    'loop through each property
+    For Each objProp In objWBEMObject.Properties_
+      'check if the property is a date type, then convert date to text
+      If objProp.CIMType = wbemCimtypeDatetime And Not _ 
+        IsNull(objProp.Value) Then
+         strLine = strLine & DMTFDate2String(objProp.Value) _
+                  & strDelim
+        Else
+         If objProp.IsArray Then
+          If Not IsNull(objProp) Then
+            For Each st In objProp.Value
+              strLine = strLine & st & ":"
+            Next
+          End If
+        Else
+          'if it's a string then surround with string delimiters
+           If objProp.CIMType = wbemCimtypeString _
+                Or objProp.CIMType = wbemCimtypeChar16 Then
+                strLine = strLine & strStringChar & objProp.Value _
+                & strStringChar  & strDelim
+          Else
+                  strLine = strLine & objProp.Value & strDelim
+          End If
+        End If
+       End If
+    Next
+     WScript.StdOut.WriteLine Left(strLine, Len(strLine)-Len(strDelim))
+    Next
+
+Sub ShowUsage
+      WScript.Echo "wmiexec executes WMI and outputs results to" & _ 
+    "StdOut" & vbCrLf & _ 
+    "Syntax:"  &  vbCrLf & _
+    "wmiexec.wsf query [/H] [/U user] [/P pasword] [/N namespace] " & _
+    "[/C computer] [/D:delimiter] [/Q:quote]" &  vbCrLf & _
+    "wmiexec executes the query against local computer" & vbCrLf & _    
+    "unless otherwise specified" &  vbCrLf & _
+    "query query to execute  " & vbCrLf & _ 
+    "/H    shows headers for each field name" & vbCrLf & _ 
+    "/U    user name" & vbCrLf & _
+    "/P    password" & vbCrLf & _    
+    "/N    WMI namespace. Default is root\CIMV2" & vbCrLf & _ 
+    "/C    name of computer to query" & vbCrLf & _
+    "/D:   delimiter for output. Default is comma" & vbCrLf & _
+    "/Q:   quote characters to surround character strings" & vbCrLf & _
+    "Example: list shares on remote computer thor" & vbCrLf & _
+    "wmiexec.wsf ""Select * From Win32_Share"" /C thor /H"
+	Wscript.Quit
+End Sub
+
+  'Reads command line arguments and sets appropriate flags
+  Sub GetArguments
+  Dim nF, strArg
+
+  'loop through command line parameters
+  For nF = 1 to WScript.Arguments.Count - 1
+
+   Select Case Ucase(Left(WScript.Arguments(nF),3))
+     Case "/H" 
+          bShowFields= True
+     Case "/U" 'user name
+        strUser = GetParameter(nF)
+     Case "/P" 'password
+        strPassword = GetParameter(nF)
+     Case "/C" 'computer
+         strComputer = GetParameter(nF)
+     Case "/D:" 'delimiter
+          strDelim = Mid(WScript.Arguments(nF),4)
+     Case "/N" 'name space
+        strNameSpace = GetParameter(nF)
+     Case "/Q:" 'string character
+          strStringChar = Mid(WScript.Arguments(nF),4)
+    End Select
+   Next
+  End Sub
+
+ 'gets next command line argument
+ 'Parameters nIndex command line argument number to process
+ Function GetParameter(nIndex)
+  If nIndex+1> WScript.Arguments.Count-1 Then ExitScript "Not enough arguments", True
+  GetParameter = WScript.Arguments(nIndex+1)
+ End Function
+
+ 'ExpandStr
+ 'Evaluates all sub expressions in string surrounded by </ and />
+ 'Parameters:
+ 'strProcess  String to check for expressions
+ 'Returns: String with evaluate sub-expressions
+ '
+ Function ExpandStr(strProcess)
+  Dim nLoc, nNext, strEval, strResult
+
+  strProcess = Replace(strProcess, "`" , chr(34))
+
+  nLoc = Instr(strProcess,"</")
+
+  Do While nLoc>0
+
+   nNext = Instr(strProcess,"/>")
+   
+   If nNext > 0 Then
+        strEval = Mid(strProcess, nLoc+2, (nNext - nLoc)-2)
+     strResult = Eval(strEval)
+
+     If Not Err Then
+         strProcess = Replace(strProcess, "</" & strEval & "/>", strResult)
+     Else
+        ExpandStr = ""       
+        Exit Function
+     End If
+   Else
+     Exit Do
+   End If
+
+  nLoc = Instr(strProcess,"</")
+ Loop 
+ ExpandStr = strProcess
+ End Function
+ 
+ 'ComputerName
+ 'Returns the name of the local computer
+ Function ComputerName
+ Dim objNetwork
+ Set objNetwork = CreateObject("WScript.Network")
+  ComputerName = objNetwork.ComputerName
+ End Function
+  ]]>
+ </script>
+</job> 

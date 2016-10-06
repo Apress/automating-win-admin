@@ -1,0 +1,137 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:createxusr.wsf
+Description:creates new Exchange server mailboxes
+-->
+ <script language="VBScript" src="adsilib.vbs">
+ <![CDATA[
+   Option Explicit
+   Const ADS_SID_WINNT_PATH = 5
+   Const ADS_SID_HEXSTRING = 1
+   Const ADS_RIGHT_EXCH_MODIFY_USER_ATT = 2
+   Const ADS_RIGHT_EXCH_MAIL_SEND_AS = 8
+   Const ADS_RIGHT_EXCH_MAIL_RECEIVE_AS = 16
+   Const ADS_ACETYPE_ACCESS_ALLOWED = 0
+
+   Dim objMailbox, objContainer, strServer
+   Dim strAlias, strMTA, strMDB, strSMTPAddr, strDisplayName
+   Dim objSid, strSidHex, strComputer, strSite, strOrg
+   Dim objComputer, strUserID, strDomain
+   Dim objSD, objACE, objSecurity, objDACL
+  'On Error Resume Next
+
+  If WScript.Arguments.Count <> 7 Then 
+   ShowUsage
+    WScript.Quit 
+ End If
+   strServer = WScript.Arguments(0) ' Exchange server name
+   strSite = WScript.Arguments (1)  'Exchange site name
+   strAlias = WScript.Arguments(2) 'mailbox alias
+   strDisplayName = WScript.Arguments (3) 'mailbox displayname
+   strSMTPAddr = WScript.Arguments(4) 'SMTP address
+   strDomain = WScript.Arguments(5) ' user NT domain
+   strUserID = WScript.Arguments(6) 'NT account name to associate with mailbox
+
+   Set objComputer = GetObject("LDAP://" & strServer)
+   If Err Then 
+        ExitScript "Error getting reference to Exchange server:" & strServer & _
+                        vbCrLf & "Error " & Err.Description
+   End If
+   'get the organization
+   strOrg = objComputer.o
+Set objContainer = _
+           GetObject("LDAP://" & strServer & _ 
+               "/CN=Recipients,OU=" & strSite & ",o=" & strOrg)
+
+   If Err Then 
+       ExitScript "Error getting reference to Recipients container for site " _ 
+       & strSite & vbCrLf & "Error " & Err.Description
+   End If
+
+   'get the SID for
+   Set objSid = CreateObject("ADsSID")
+   If Err Then 
+      ExitScript "Unable to get reference to ADSSID object" & vbCrLf _
+                        & "Error:" & Err.Description
+   End If
+   objSid.SetAs ADS_SID_WINNT_PATH, "WinNT://" _ 
+                & strDomain & "/" & strUserID
+   If Err Then 
+        ExitScript "Error getting reference to user " & strUserID & _ 
+       " from domain " & strDomain & vbCrLf & "Error " & Err.Description
+   End If
+   strSidHex = objSid.GetAs(ADS_SID_HEXSTRING)
+'Create a new MailBox
+   Set objMailbox = objContainer.create("organizationalPerson", _ 
+                          "cn=" & strAlias)
+   If Err Then
+        ExitScript "Error creating mailbox " & strAlias & vbCrLf _ 
+                           & "Error " & Err.Description
+   End If
+   objMailbox.Put "mailPreferenceOption", 0 ' set mail preference 
+   objMailbox.Put "cn", strDisplayName    
+   objMailbox.Put "uid", strAlias   
+   'set home server for MTA
+   objMailbox.Put "Home-MTA", _
+     "cn=Microsoft MTA,cn=" & strServer & _
+      ",cn=Servers,cn=Configuration,ou=" & strSite & ",o=" & strOrg
+   'set home server for MDB
+   objMailbox.Put "Home-MDB", "cn=Microsoft Private MDB,cn=" _
+            & strServer & ",cn=Servers,cn=Configuration,ou=" _
+            & strSite & ",o=" & strOrg
+
+   objMailbox.Put "MAPI-Recipient", True 
+   objMailbox.rfc822Mailbox = strSMTPAddr 'set Internet SMTP address
+   'set X.400 address
+   objMailbox.Put "textEncodedORaddress", _
+        "c=US;a= ;p=" & strSite & ";o=" & strOrg & ";s=" & strAlias
+   'set associated NT user account
+   objMailbox.Put "Assoc-NT-Account", strSidHex 
+   objMailbox.SetInfo ' update settings
+   
+   If Err Then 
+        ExitScript "Error creating mailbox:" & strDisplayName _ 
+       & vbCrLF & Err.Description & vbCrLf & "Error " & Err.Description
+   End If 
+
+   'mailbox has been created, now grant user persmission to use mailbox
+   'create an instance of the ADsSecurity object
+   Set objSecurity = CreateObject("ADsSecurity")
+
+   'get the security descriptor for the object
+   Set objSD = objSecurity.GetSecurityDescriptor("LDAP://" & strServer & _
+                       "/" & objMailbox.distinguishedName)
+
+   'get discretionary ACL for the object
+   Set objDACL = objSD.DiscretionaryAcl
+   'create a Acess Control Entry (ACE)
+   Set objAce = WScript.CreateObject("AccessControlEntry") 
+   'set the user id to add security for
+   objAce.Trustee = strDomain & "\" & strUserID 
+
+   'allow trustee to modify user attributes, send and receive mail   
+   objAce.AccessMask = ADS_RIGHT_EXCH_MODIFY_USER_ATT Or _ 
+                   ADS_RIGHT_EXCH_MAIL_SEND_AS Or ADS_RIGHT_EXCH_MAIL_RECEIVE_AS 
+   objAce.AceType = ADS_ACETYPE_ACCESS_ALLOWED 'set access
+
+   objDACL.AddAce objAce 'add the ACE to DACL
+   objSD.DiscretionaryAcl = objDACL
+   objSecurity.SetSecurityDescriptor objSD
+ WScript.Echo "Successfully created mailbox:" & strDisplayName
+
+ Sub ShowUsage
+  WScript.Echo "createxuser.wsf creates new Exchange server mailboxes" & vbCrLf & _
+    "Syntax:"  & vbCrLf & _
+    "createxuser.wsf server site alias display SMTPAddress domain account" _ 
+    & vbCrLf  & "server Exchange server " & vbCrLf & _ 
+    "site   Exchange server site" & vbCrLf & _
+    "alias  mailbox alias" & vbCrLf & _
+    "display mailbox display name" & vbCrLf & _
+    "SMTPAddress mailbox Internet address" & vbCrLf & _ 
+    "domain domain to find associated user account" & vbCrLf & _
+    "account NT user account" 
+   End Sub
+   ]]>
+  </script>
+</job>

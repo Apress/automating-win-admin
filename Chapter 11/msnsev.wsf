@@ -1,0 +1,42 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:msnsev.wsf
+captures a Messenger send event
+-->
+ <script language="VBScript" src="msnlib.vbs">
+<![CDATA[
+  Dim objMessenger, objUser, bSent, nCookie
+
+  Set objMessenger = StartMessenger("freds@hotmail.com", "sderf!@#")
+  
+  WScript.ConnectObject objMessenger, "msn_"
+  bSent = False
+  'get a user to send a message to 
+  Set objUser = objMessenger.CreateUser("joeb@hotmail.com", _ 
+                objMessenger.Services.PrimaryService)
+
+  'send a message
+  nCookie = objUser.SendText(MsgHeader, "Test Message", _
+            MMSGTYPE_ALL_RESULTS)
+  
+ 'continue until Messenger is online and sent message is 
+  While objMessenger.LocalState = MSTATE_ONLINE And Not bSent
+   Wscript.Sleep 100
+  Wend
+  
+  'this event fires when a message send status is determined
+  Sub msn_OnSendResult(nResult, nRCookie )
+   'is the message sent the one we want to track?
+   If nCookie = nRCookie Then 
+    bSent = True
+     If nResult = MSGR_S_OK Then
+      Wscript.Echo "Message sent successfully"	 
+     Else
+      Wscript.Echo "Error sending message"	 
+     End If
+   End If 
+  End Sub
+  ]]>
+  </script>
+</job>

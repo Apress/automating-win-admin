@@ -1,0 +1,60 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:dirsec.wsf
+Description:
+Sets security permissions on a directory
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+ Option Explicit
+Const OBJECT_INHERIT_ACE = 1
+Const CONTAINER_INHERIT_ACE = 2
+Const INHERIT_ONLY_ACE = 8
+Const ACETYPE_ACCESS_ALLOWED = 0
+
+'file access types
+Const FILE_GENERIC_READ = &H120089
+Const FILE_GENERIC_WRITE = &H120116
+Const FILE_GENERIC_EXECUTE = &H1200A0
+ Dim objDescriptor, objACE, retval, objServices
+ Dim objFileSec, objTrustee, aDACL, objACE2
+Set objServices = GetObject("winmgmts:{impersonationLevel=impersonate}")
+
+ Set objFileSec = objServices.Get( _
+        "Win32_LogicalFileSecuritySetting.Path='f:\data'")
+
+Set objACE = objServices.Get("Win32_ACE")
+ Set objACE2 = objServices.Get("Win32_ACE")
+Set objTrustee = objServices.Get("Win32_Trustee")
+ Set objDescriptor = objServices.Get("Win32_SecurityDescriptor")
+
+  retval = objFileSec.GetSecurityDescriptor(objDescriptor)
+ aDACL = objDescriptor.dacl
+'set trustee information
+ objTrustee.Name = "steinb"
+objTrustee.sid = GetBinarySID("steinb")
+
+ 'set the file permissions for the directory
+ objACE.AccessMask = FILE_GENERIC_READ Or FILE_GENERIC_EXECUTE
+ objACE.AceType = ACETYPE_ACCESS_ALLOWED
+ objACE.AceFlags = INHERIT_ONLY_ACE Or OBJECT_INHERIT_ACE
+ objACE.Trustee = objTrustee
+
+ 'set directory permissions
+ objACE2.AccessMask = FILE_GENERIC_READ Or _
+                        FILE_GENERIC_EXECUTE Or FILE_GENERIC_WRITE
+ objACE2.AceType = ACETYPE_ACCESS_ALLOWED
+ objACE2.AceFlags = CONTAINER_INHERIT_ACE
+ objACE2.Trustee = objTrustee
+
+ 'resize DACL array and add new ACEs to DACL
+ ReDim Preserve aDACL(UBound(aDACL) + 2)
+ Set aDACL(UBound(aDACL) - 1) = objACE
+ Set aDACL(UBound(aDACL)) = objACE2
+objDescriptor.dacl = aDACL
+'set the security descriptor
+ retval = objFileSec.SetSecurityDescriptor(objDescriptor)
+]]>
+ </script>
+</job>

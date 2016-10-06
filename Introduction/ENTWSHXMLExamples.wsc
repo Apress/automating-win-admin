@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<component>
+<registration
+    description="ENTWSH XML Element example"
+    progid="ENTWSH.XMLExamples"
+    version="1.00"
+    classid="{23cb7610-6eae-11d4-bce2-00104b164591}"
+>
+</registration>
+<public>
+    <method name="WriteFile">
+          <parameter name="strPath"/>
+    </method>
+</public>
+ <comment>
+  Set debugging on, reference the FSO type library,
+  create an instance of the FSO object and create a resource.
+ </comment>
+ <?component error="true" debug="true"?>
+ <reference object="Scripting.FileSystemObject"/> 
+ <object id="objFSO" progid="Scripting.FileSystemObject"/> 
+ <resource id="Message">This is a message to write to the file
+to test a few additional XML elements that can be used
+ </resource>
+<script language="VBScript">
+  <![CDATA[
+Function WriteFile(strPath)
+  'write the Message resource to a file specified by the 
+  'strPath parameter
+  Set objTS = objFSO.OpenTextFile(strPath, ForWriting, True)
+  objTS.Write getResource("Message")
+  objTS.Close
+End Function
+]]>
+ </script>
+</component>

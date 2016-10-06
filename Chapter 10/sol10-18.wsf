@@ -1,0 +1,29 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:sol10-18.wsf
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+ 'synchronize time on remote computer against local computer
+ strComputer = ""w2k3-01"
+
+ Set objService = _
+   GetObject("winmgmts:{impersonationLevel=impersonate,(SystemTime)}!\\" & strComputer)
+
+ Set objOS = objService.Get("Win32_OperatingSystem")
+
+ Set objComputer = objService.Get("Win32_ComputerSystem='" & strComputer & "'")
+ nTimeZone = objComputer.Currenttimezone
+
+ 'get the active OS
+ Set objOSColl = objService.ExecQuery _
+          ("Select * From Win32_OperatingSystem Where Primary = True")
+
+ 'set the time on the remote computer using the local systems current time
+ For Each objOS In objOSColl
+    nSuccess = objOS.SetDateTime(Convert2DMTFDate(Now, nTimeZone))
+ Next
+ ]]>
+ </script>
+</job>

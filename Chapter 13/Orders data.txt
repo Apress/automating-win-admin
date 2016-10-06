@@ -1,0 +1,4 @@
+Products,SalesTotal
+"Dairy",4543.45
+"Meat",2344.34
+"Produce",1347.54

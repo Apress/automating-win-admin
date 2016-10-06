@@ -1,0 +1,92 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:sethours.wsf
+Description:sets logon hours for users
+-->
+ <script language="VBScript" src="adsilib.vbs">
+ <![CDATA[
+ Dim aLogonHours, objUser
+ Dim strUser, strDay, strStart, strEnd, strFlag, strContainer
+
+ If Not IsCscript() Then _
+  ExitScript "This script must be run from command line using cscript.exe"
+
+  If Wscript.Arguments.Count <> 6 Then 
+    ShowUsage
+	Wscript.Quit
+  End If
+
+  strContainer = Wscript.Arguments(0) 'WinNT domain or computer
+  strUser = Wscript.Arguments(1)   'user id to set
+  strDay = Wscript.Arguments(2)   ' day - starting from 1
+  strStart = Wscript.Arguments(3) 'start hour
+  strEnd = Wscript.Arguments(4)   
+  strFlag = Cbool(Wscript.Arguments(5))
+
+  'get a reference to the user you wish to set logon times
+  Set objUser = GetObject("WinNT://" & strContainer & "/" & strUser & ",user")
+
+  'create a Byte Array Conversion (BAC) object
+  Set objBAC = CreateObject("BAC.Convert")
+  'convert login hours to an array of variants
+  aLogonHours = objBAC.ByteToVariant(objUser.LoginHours) 
+
+  SetDay strDay, strStart, strEnd, strFlag, aLogonHours
+  objuser.LoginHours = objBAC.VariantToByte(aLogonHours)
+
+  objUser.SetInfo
+
+ Sub ShowUsage
+  WScript.Echo _ 
+  "sethours.wsf sets logon hour for specified user" & vbCrLf & _ 
+  "Syntax:" &  vbCrLf & _
+  "sethours.wsf container user day hour duration onoff " &  vbCrLf & _
+  "container computer or domain where user resides" & vbCrLf & _ 
+  "user      user name to set logon hours " & vbCrLf & _
+  "day       day to set, 1=Sunday, 2= Monday etc." & vbCrLf & _
+  "hour      start hour in 24 hour clock format" & vbCrLf & _
+  "duration  number of hours to set" & vbCrLf & _
+  "access    Boolean value. True=grant access False=deny access" & vbCrLf & _
+  "Example:deny freds in Acme domain access on Sunday from 1-4PM" & vbCrLf & _
+  "sethours.wsf Acme freds 1 13 3 False"
+ End Sub
+
+ Sub SetDay(nDay, nHour, nDuration, bOn, aHours)
+ Dim nHours, nF, nStart, nPos, nBitFlag
+
+ 'calculate the hour of the week starting from Sunday
+ nHours = ((nDay - 1) * 24 + nHour) - 9
+    
+  'loop through all hours in range and change status
+  For nF = nHours To (nHours + nDuration) - 1
+     'since the period of Sunday 12AM to 9AM is stored
+     'in the last array element we must change the array element
+     'if the hour is in this range
+     If nF < 0 Then
+       nStart = nF + 168
+     ElseIf nF > 168 Then
+       nStart = nF - 168
+     Else
+       nStart = nF
+     End If
+     
+    'determine the array element to start. each element
+    'contains 8 hours
+    nPos = Int(nStart / 8)
+    
+    'calculate the bit to set for the hour
+    nBitFlag = 2 ^ (nStart Mod 8)
+    
+    If bOn Then
+        'grant access to an hour
+        aHours(nPos) = aHours(nPos) Or nBitFlag
+    Else
+        'deny access to hour
+        aHours(nPos) = aHours(nPos) And Not nBitFlag
+    End If
+  Next
+ End Sub
+  ]]>
+  </script>
+</job>

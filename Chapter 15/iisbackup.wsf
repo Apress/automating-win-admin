@@ -1,0 +1,131 @@
+<?xml version="1.0" ?>
+<job>
+<!--
+iisbackup.wsf
+creates, lists,restores and deletes IIS backup
+-->
+ <script language="VBScript" src="adsilib.vbs">
+ <![CDATA[
+  Option Explicit
+  Const MD_BACKUP_MAX_VERSION = 9999 
+  Const MD_BACKUP_MAX_LEN = 100   
+  Const MD_BACKUP_HIGHEST_VERSION = &HFFFFFFFE  
+  Const MD_BACKUP_NEXT_VERSION = &HFFFFFFFF   
+
+  Const MD_BACKUP_OVERWRITE = 1   
+  Const MD_BACKUP_FORCE_BACKUP = 4 
+  Const MD_BACKUP_SAVE_FIRST = 2   
+  Dim strComputer, strType, strAction
+  Dim strBackupName, nVersion, objComputer
+
+  On Error Resume Next
+  'check the argument count
+   If Wscript.Arguments.Count < 1 Then 
+     ShowUsage
+	 Wscript.Quit
+   End If
+
+    strComputer = Wscript.Arguments(0) 
+    strAction = Ucase(Wscript.Arguments(1)) 
+ 
+    Set objComputer = GetObject("IIS://" & strComputer)
+    If Err Then 
+            Wscript.Echo "Error connecting to computer " _
+			             & strComputer & vbCrLf & Err.Description
+            Wscript.Quit
+    End If
+
+    Select Case strAction
+      Case "/D" 'delete
+        GetDetails
+        objComputer.DeleteBackup strBackupName, nVersion
+        If Err Then 
+         Wscript.Echo "Error deleting backup " & strBackupName _
+		              & vbCrLf & Err.Description
+        Else
+         Wscript.Echo "Successfully deleted backup " & strBackupName
+        End If 
+
+      Case "/L" 'list
+        ListBackups
+
+      Case "/B" 'backup
+        GetDetails
+        objComputer.Backup strBackupName, nVersion, _
+                        MD_BACKUP_SAVE_FIRST Or MD_BACKUP_OVERWRITE
+
+        If Err Then 
+         Wscript.Echo "Error creating backup " & strBackupName _
+		              & vbCrLf & Err.Description
+        Else
+         Wscript.Echo "Successfully created backup " & strBackupName
+        End If 
+
+      Case "/R" 'restore
+        GetDetails
+
+        objComputer.Restore  strBackupName, nVersion,0
+
+        If Err Then 
+         Wscript.Echo "Error restoring backup " & strBackupName _
+		              & vbCrLf & Err.Description
+        Else
+         Wscript.Echo "Successfully restored backup " & strBackupName
+        End If 
+
+     End Select
+
+    Sub ShowUsage
+     WScript.Echo "iisbackup.wsf performs IIS backup operations " & vbCrLf & _ 
+    "Syntax:"  &  vbCrLf & _
+    "iisbackup.wsf  computer /d | /b | /l | /r [name] [version] " &  vbCrLf & _
+    "computer computer IIS server resides on" & vbCrLf & _ 
+    "/d      deletes specified backup " & vbCrLf & _
+    "/b      creates new backup " & vbCrLf & _
+    "/r      restores specified backup" & vbCrLf & _
+    "/l      list all backups for specified IIS server" & vbCrLf & _
+    "name    name of backup to delete/create/restore" & vbCrLf & _
+    "version optional version # of backup to delete/create/restore" & vbCrLf & _
+    "Example: create backup called newbackup for server acmeweb" & vbCrLf & _
+    "iisbackup.wsf Acmeweb /b newbackup" 
+    End Sub
+
+   'GetDetails retrieves command line parameters and determines
+   'what operation to perform
+    Sub GetDetails
+      If Wscript.Arguments.Count < 3 Then ExitScript "Not enough parameters"
+      strBackupName = Wscript.Arguments(2)
+      'check if version # can be set 
+      If Wscript.Arguments.Count> 3 Then 
+         nVersion = Wscript.Arguments(3)
+      Else
+         'if action is backup then version # is next version
+         'otherwise restore or delete highest version
+         If strAction = "/B"  Then
+          nVersion = MD_BACKUP_NEXT_VERSION
+         Else
+          nVersion = MD_BACKUP_HIGHEST_VERSION
+         End If
+      End If
+
+     End Sub
+
+    Sub ListBackups()
+      Dim nIndex, dBackupTime
+      nIndex= 0
+      Do While True
+       objComputer.EnumBackups "", nIndex, nVersion, _ 
+              strBackupName, dBackupTime
+
+       If Err Then 
+	      Wscript.Echo "Error enumerating backup " & vbCrLf & _
+		               Err.Description
+	      Wscript.Quit 
+       End If
+       Wscript.Echo strBackupName, nVersion, dBackupTime
+       nIndex = nIndex+1
+      Loop
+    End Sub
+    ]]>
+  </script>
+</job>

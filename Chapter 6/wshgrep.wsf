@@ -1,0 +1,46 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:wshgrep.wsf
+performs regular expression filtering against standard input
+-->
+ <script language="VBScript" src="fsolib.vbs">
+<![CDATA[
+
+ Option Explicit
+
+ Dim nF, objFSO, strLine
+ Dim objRegExp, strFilter
+
+If Not IsCscript Then ExitScript _
+    "This script must be run from command line using cscript.exe", True
+
+If WScript.Arguments.Count <> 1 Then 
+ ShowUsage
+ WScript.Quit
+End If
+
+  strFilter= WScript.Arguments(0)
+  Set objRegExp = New RegExp  
+  objRegExp.Pattern = strFilter   
+  objRegExp.IgnoreCase = True  
+
+  Do While Not WScript.StdIn.AtEndOfStream
+    strLine = WScript.StdIn.ReadLine
+   
+    If objRegExp.Test(strLine) Then
+      WScript.StdOut.WriteLine(strLine)
+   End If
+ Loop
+
+Sub ShowUsage()
+ WScript.Echo _
+     WScript.ScriptName & " filters standard input against a regular expression." _ 
+    & vbCrLf & "Syntax:" &  vbCrLf & _
+    WScript.ScriptName & "  regexp" &  vbCrLf & _
+    "regexp  regular expression"
+    WScript.Quit
+ End Sub
+  ]]>
+  </script>
+</job>

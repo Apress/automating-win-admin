@@ -1,0 +1,38 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:menu.wsf
+demonstrate a simple text based menu
+-->
+ <script language="VBScript" src="fsolib.vbs">
+ <![CDATA[
+'menu.wsf
+Dim strOption
+
+CheckCScript
+
+Wscript.Echo "-------Menu Options-------------"
+Wscript.Echo "1 - Copy Information"
+Wscript.Echo "2 - Move Information"
+Wscript.Echo "3 - Quit"
+Wscript.Echo "Select option and press the Enter key to continue"
+
+'read the standard input
+strOption = WScript.StdIn.Read(1)
+
+Select Case strOption
+ Case "1"
+    Wscript.Echo "option 1 selected"
+Case "2"
+    Wscript.Echo "option 2 selected"
+Case "3"
+    Wscript.Quit -1
+Case Else
+    Wscript.Echo "Invalid option selected"
+End Select
+
+WScript.StdIn.Close
+ ]]>
+  </script>
+</job>
+

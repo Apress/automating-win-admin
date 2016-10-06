@@ -1,0 +1,14 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+ get the site number for the Web site Accounting Intranet
+-->
+ <script language="VBScript" src="adsilib.vbs">
+ <![CDATA[
+   Set objWebService = GetObject("IIS://Thor/W3SVC")
+   nSiteName = FindSiteNumber(objWebService, "Accounting Intranet","Web")
+  'delete the site
+   objWebService.Delete "IIsWebServer", nSiteName 
+   ]]>
+  </script>
+</job>

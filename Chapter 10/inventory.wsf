@@ -1,0 +1,120 @@
+<?xml version="1.0" ?>
+<job>
+<!--comment
+Script:inventory.wsf
+Description:displays system inventory for local machine
+-->
+ <script language="VBScript" src="wmiinc.vbs">
+ <![CDATA[
+  Const wbemFlagReturnImmediately  =16 
+  Const wbemFlagForwardOnly = 32
+
+  Dim objSysInfo, objService
+
+  Set objService = _
+       GetObject("winmgmts:{impersonationLevel=impersonate}!root\cimv2")
+
+  'create an instance of the SysInfo object    
+  Set objSysInfo = CreateObject("SysInfo.WSC")
+
+  WScript.Echo "BIOS Version:" & objSysInfo.BIOSVersion
+  WScript.Echo "CPU:" & objSysInfo.CPU
+  WScript.Echo "Memory:" & objSysInfo.Memory
+  WScript.Echo "O/S Version:" & objSysInfo.OS
+  WScript.Echo "O/S Registered User:" & objSysInfo.RegisteredUser
+  WScript.Echo "O/S Serial #:" & objSysInfo.SerialNumber
+  WScript.Echo "Virtual Memory:" & objSysInfo.VirtualMemory
+
+  WScript.Echo "Disk Drives:"
+  WScript.Echo WMIInfo("Select Description, InterfaceType," & _
+                 "Manufacturer, Model, Size From Win32_DiskDrive" _
+             , Array("Description", "InterfaceType", "Manufacturer" _
+            ,"Model", "Size") _
+             , Array( "Description", 25, "Interface", 10, _ 
+             "Manufacturer" , 20, "Model", 15, "Size", 10)) & vbCrLf
+
+  WScript.Echo "Video Configuration:"
+  WScript.Stdout.WriteLine WMIInfo("Select AdapterType, AdapterRAM From " & _ 
+               "Win32_VideoConfiguration"  _
+              ,Array("AdapterType", "AdapterRAM") _
+               , Array("Description", 50, "Video Memory", 30)) & vbCrLf
+
+  WScript.Echo "Network Card:"
+  WScript.Echo WMIInfo("Select Description, MacAddress From " & _
+               "Win32_NetworkAdapterConfiguration Where IPEnabled = True" _
+                , Array("Description", "MacAddress") _
+                , Array("Description", 60, "MAC Address", 30)) & vbCrLf
+
+  WScript.Echo "Modems:"
+  WScript.Echo WMIInfo("Select Model, ProviderName From " & _ 
+                "Win32_POTSModem", Array("Model", "ProviderName") _
+                , Array("Model", 50, "Manufacturer", 30)) & vbCrLf
+
+  WScript.Echo "Controllers:"
+  WScript.Echo WMIInfo("Select Description, Manufacturer From " & _ 
+                  "Win32_SCSIController" , Array("Description", _ 
+                  "Manufacturer") , Array("Description", 60, _
+                  "Manufacturer", 40)) & vbCrLf
+
+'WMIInfo
+'returns specified information from WMI query
+'Parameters:
+'strQuery    SQL query to execute against WMI service
+'aFields     Array of fields to output
+'aLayout     Two dimensional array that determines the layout of the 
+'            query results. First element is the heading and second is
+'            the width to output. There must be one formatting array for
+'            each WMI field specified by aFields
+'Returns:
+'Formatted string with results
+Function WMIInfo(strQuery, aFields, aLayout)
+Dim objInstance, objEnumerator, objProp
+Dim strLine,nC ,nF, st
+Dim strReturn, strText
+
+Set objEnumerator = objService.ExecQuery(strQuery,, wbemFlagReturnImmediately + wbemFlagForwardOnly)
+
+On Error Resume Next
+
+'loop through layout and build headers
+For nF = LBound(aLayout) To UBound(aLayout) Step 2
+   strReturn = strReturn & Left(aLayout(nF) & _ 
+                Space(aLayout(nF + 1)), aLayout(nF + 1))
+Next
+
+'loop through each instance and build the output lines
+For Each objInstance In objEnumerator
+strLine = ""
+
+'loop through each property
+For nF = LBound(aFields) To UBound(aFields)
+    strText = ""
+    Set objProp = objInstance.Properties_(aFields(nF))
+    
+    'if property is date then format accordingly
+    If objProp.CIMType = wbemCimtypeDatetime And _
+          Not IsNull(objProp.Value) Then
+            strText = DMTFDate2String(objProp.Value)
+        Else 'check if array, output each element
+         If objProp.IsArray Then
+          If Not IsNull(objProp) Then
+            For Each st In objProp.Value
+                strLine = strLine & st & ","
+            Next
+          End If
+         Else
+           strText = objProp.Value
+         End If
+        End If    
+       'build output lines
+       strLine = strLine & Left(strText & _ 
+            Space(aLayout(nF * 2 + 1)), aLayout(nF * 2 + 1))
+     Next
+     strReturn = strReturn & vbCrLf & strLine
+  Next
+
+  WMIInfo = strReturn
+End Function
+  ]]>
+  </script>
+</job>
